@@ -1,0 +1,2792 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GidWave - Гидросфера</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after {
+      border-radius: 0px !important;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F6F5F0;
+      color: #14181D;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-serif-editorial {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+    }
+
+    /* Плавные анимации появления и исчезновения при скролле и смене контента */
+    .scroll-reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1), transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: opacity, transform;
+    }
+
+    .scroll-reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .fade-transition {
+      transition: opacity 0.28s ease, transform 0.28s ease;
+    }
+
+    .fade-out-state {
+      opacity: 0 !important;
+      transform: translateY(8px);
+    }
+
+    /* Ползунок годов вплотную к нижней границе карты */
+    input[type="range"].aral-flush-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      background: #283848;
+      outline: none;
+      cursor: pointer;
+      margin: 0;
+      padding: 0;
+      position: relative;
+      z-index: 30;
+    }
+
+    input[type="range"].aral-flush-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 26px;
+      background: #F6F5F0;
+      border: 2px solid #0F3556;
+      cursor: grab;
+      transition: background-color 0.15s ease;
+    }
+
+    input[type="range"].aral-flush-slider::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      background: #38BDF8;
+    }
+
+    input[type="range"].aral-flush-slider::-moz-range-thumb {
+      width: 22px;
+      height: 26px;
+      background: #F6F5F0;
+      border: 2px solid #0F3556;
+      cursor: grab;
+    }
+
+    /* Ползунок громкости видео в футере */
+    input[type="range"].video-vol-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 96px;
+      height: 4px;
+      background: #334155;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"].video-vol-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 16px;
+      background: #38BDF8;
+      cursor: pointer;
+    }
+
+    .photo-slot {
+      position: relative;
+      background: #1B2A38;
+      overflow: hidden;
+    }
+
+    .photo-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.6s ease, opacity 0.35s ease;
+    }
+
+    .photo-slot:hover img {
+      transform: scale(1.02);
+    }
+
+    .presentation-16-9 {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      position: relative;
+      overflow: hidden;
+      background: #0D1B2A;
+    }
+
+    /* Полноэкранный режим для видео на случай блокировки браузером iframe fullscreen */
+    .video-cinema-expanded {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 9999 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      background: #070A0E !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      padding: 20px !important;
+    }
+
+    .video-cinema-expanded video {
+      max-height: calc(100vh - 100px) !important;
+      width: 100% !important;
+      object-fit: contain !important;
+    }
+
+    canvas {
+      display: block;
+      outline: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-[#0F3556] selection:text-white">
+
+  <!-- ШАПКА: ТОЛЬКО GidWave И ЯЗЫКИ -->
+  <header class="bg-[#F6F5F0]/95 backdrop-blur-sm sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+      <div class="text-xl font-bold tracking-tight text-[#14181D]">GidWave</div>
+      <div class="flex items-center text-sm font-medium gap-1">
+        <button onclick="setLanguage('kz')" id="btn-lang-kz" class="px-2.5 py-1 transition-colors">KZ</button>
+        <span class="text-neutral-300">/</span>
+        <button onclick="setLanguage('ru')" id="btn-lang-ru" class="px-2.5 py-1 transition-colors">RU</button>
+        <span class="text-neutral-300">/</span>
+        <button onclick="setLanguage('en')" id="btn-lang-en" class="px-2.5 py-1 transition-colors">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content-area" class="flex-grow fade-transition">
+
+    <!-- ТЕМА 1: ОПРЕДЕЛЕНИЕ И ЧТО ИЗ СЕБЯ ПРЕДСТАВЛЯЕТ ГИДРОСФЕРА (ОТКРЫТАЯ ЖУРНАЛЬНАЯ ВЕРСТКА БЕЗ КОРОБОК) -->
+    <section class="max-w-6xl mx-auto px-5 sm:px-8 pt-14 pb-24 scroll-reveal">
+      <h1 data-i18n="main_title" class="font-serif-editorial text-4xl sm:text-6xl font-semibold tracking-tight text-[#14181D] leading-[1.06] mb-12"></h1>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        <!-- Левая колонка: открытый авторский текст + цитата + под абзацем о пресной воде три тезиса внизу -->
+        <div class="lg:col-span-7 space-y-6 text-base sm:text-lg leading-relaxed text-neutral-800">
+          <p data-i18n="def_p1"></p>
+          <p data-i18n="def_p2"></p>
+
+          <blockquote class="pl-5 border-l-2 border-[#0F3556] my-8">
+            <p data-i18n="def_quote" class="font-serif-editorial italic text-2xl text-[#14181D] leading-snug"></p>
+          </blockquote>
+
+          <p data-i18n="def_p3"></p>
+
+          <!-- Три факта сразу под абзацем «На пресную воду остается лишь...» -->
+          <div class="pt-6 space-y-8">
+            <div class="space-y-2">
+              <h3 data-i18n="def_sub_struct" class="font-serif-editorial text-2xl sm:text-3xl font-semibold text-[#14181D]"></h3>
+              <p data-i18n="def_struct_p1" class="text-base text-neutral-700 leading-relaxed"></p>
+            </div>
+
+            <div class="space-y-2">
+              <div class="font-serif-editorial text-3xl font-semibold text-[#0F3556]" data-i18n="def_stat_title"></div>
+              <p data-i18n="def_p4" class="text-base text-neutral-700 leading-relaxed"></p>
+            </div>
+
+            <div class="space-y-2">
+              <div class="font-serif-editorial text-3xl font-semibold text-[#0F3556]" data-i18n="def_renew_title"></div>
+              <p data-i18n="def_struct_p2" class="text-base text-neutral-700 leading-relaxed"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Правая колонка: фотографии без коробок -->
+        <div class="lg:col-span-5 space-y-10 lg:pl-4">
+          <div class="photo-slot h-64 sm:h-72">
+            <img id="img-theory-1" src="" alt="Hydrosphere Ocean" />
+          </div>
+
+          <div class="photo-slot h-60">
+            <img id="img-theory-2" src="" alt="Hydrosphere Glaciers" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ТЕМА 2: ЭКОЛОГИЧЕСКОЕ СОСТОЯНИЕ ГИДРОСФЕРЫ (БЕЗ КОРОБОК И КАРТОЧЕК) -->
+    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-20 scroll-reveal">
+      <h2 data-i18n="eco_title" class="font-serif-editorial text-3xl sm:text-5xl font-semibold text-[#14181D] mb-12"></h2>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start mb-16">
+        <div class="lg:col-span-4 space-y-3">
+          <h3 data-i18n="eco_sub_ext" class="font-serif-editorial text-2xl font-semibold text-[#0F3556]"></h3>
+          <p data-i18n="eco_text_ext" class="text-base text-neutral-800 leading-relaxed"></p>
+        </div>
+
+        <div class="lg:col-span-4 space-y-3">
+          <h3 data-i18n="eco_sub_int" class="font-serif-editorial text-2xl font-semibold text-[#0F3556]"></h3>
+          <p data-i18n="eco_text_int" class="text-base text-neutral-800 leading-relaxed"></p>
+        </div>
+
+        <div class="lg:col-span-4">
+          <div class="photo-slot h-56">
+            <img id="img-eco-theory" src="" alt="Ecological state" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Виды загрязнения: открытая двухколоночная типографика без фоновых плашек и без линий -->
+      <div class="mt-14">
+        <h3 data-i18n="eco_types_heading" class="font-serif-editorial text-2xl sm:text-3xl font-semibold text-[#14181D] mb-10"></h3>
+        <div id="pollution-list" class="space-y-8"></div>
+        <p data-i18n="eco_outro" class="mt-12 text-lg text-neutral-800 italic font-serif-editorial leading-relaxed max-w-4xl"></p>
+      </div>
+    </section>
+
+    <!-- ТЕМА 3: ПУТИ РЕШЕНИЯ (1, 2, 3, 4, 5, 6 - ОТКРЫТЫЙ СПИСОК БЕЗ КОРОБОК) -->
+    <section class="max-w-6xl mx-auto px-5 sm:px-8 py-20 scroll-reveal">
+      <div class="max-w-3xl mb-12">
+        <h2 data-i18n="sol_title" class="font-serif-editorial text-3xl sm:text-5xl font-semibold text-[#14181D] mb-4"></h2>
+        <p data-i18n="sol_intro" class="text-base sm:text-lg text-neutral-700 leading-relaxed"></p>
+      </div>
+
+      <div id="solutions-list" class="space-y-9 max-w-4xl"></div>
+
+      <p data-i18n="sol_examples" class="mt-12 text-base sm:text-lg font-medium text-[#0F3556] leading-relaxed max-w-4xl"></p>
+    </section>
+
+    <!-- ГИДРО-ЭКОЛОГИЧЕСКИЙ МОНИТОРИНГ (16:9, ОДНА ФОТОГРАФИЯ) -->
+    <section class="py-16 scroll-reveal">
+      <div class="max-w-[1380px] mx-auto px-4 sm:px-8">
+        <div class="mb-6">
+          <h2 data-i18n="pres_title" class="font-serif-editorial text-3xl sm:text-5xl font-semibold text-[#14181D]"></h2>
+        </div>
+
+        <div class="presentation-16-9">
+          <img
+            id="img-monitoring-16-9"
+            src="bfc20cec-33c2-4ecc-94de-2b246b0d87e6.jpeg"
+            alt="Гидро-экологический мониторинг"
+            class="w-full h-full object-cover"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!-- ИНТЕРАКТИВ 1: РЕАЛЬНАЯ 3D-КАРТА МИРА С РЕЛЬЕФОМ, СТРАНАМИ И ЯРКИМИ ВОДНЫМИ ОБЪЕКТАМИ -->
+    <section class="py-20 scroll-reveal">
+      <div class="max-w-6xl mx-auto px-5 sm:px-8">
+        <div class="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h2 data-i18n="int1_title" class="font-serif-editorial text-3xl sm:text-5xl font-semibold text-[#14181D]"></h2>
+            <p data-i18n="int1_sub" class="text-sm sm:text-base text-neutral-600 mt-1.5 max-w-2xl"></p>
+          </div>
+          <button id="world-reset-btn" onclick="resetWorldView()" class="hidden px-5 py-2.5 bg-[#14181D] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#0F3556] transition-colors shrink-0 self-start sm:self-auto" data-i18n="btn_reset_world"></button>
+        </div>
+
+        <div class="relative w-full bg-[#0E3156] overflow-hidden">
+          <div class="flex flex-col lg:flex-row w-full min-h-[590px]">
+
+            <!-- Левая панель информации (Мир - чистая журнальная типографика без коробок) -->
+            <div id="world-info-box" class="hidden lg:w-5/12 bg-[#F6F5F0] p-6 sm:p-9 flex-col justify-between z-10 fade-transition">
+              <div id="world-info-inner" class="space-y-5 fade-transition">
+                <h3 id="world-name" class="font-serif-editorial text-3xl sm:text-4xl font-semibold text-[#14181D] leading-tight"></h3>
+                <div id="world-location" class="text-sm font-semibold text-[#0F3556]"></div>
+
+                <div class="photo-slot h-48">
+                  <img id="world-photo" src="" alt="Water body" />
+                </div>
+
+                <p id="world-problem" class="text-sm sm:text-base text-neutral-800 leading-relaxed"></p>
+                <p id="world-solution" class="text-sm sm:text-base text-neutral-800 leading-relaxed"></p>
+              </div>
+
+              <div class="pt-6 mt-6">
+                <button onclick="resetWorldView()" class="px-5 py-2.5 bg-[#14181D] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#0F3556] transition-colors" data-i18n="btn_reset_world"></button>
+              </div>
+            </div>
+
+            <!-- Правая область: 3D-карта мира -->
+            <div id="world-canvas-wrap" class="w-full lg:w-full h-[550px] sm:h-[590px] relative">
+              <canvas id="world-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+              <div id="world-hover-label" class="pointer-events-none fixed hidden px-3.5 py-1.5 bg-[#14181D] text-white text-xs font-semibold tracking-wide z-50"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ИНТЕРАКТИВ 2: ТЕРРИТОРИАЛЬНАЯ 3D-КАРТА КАЗАХСТАНА С ЯРКО ВЫДЕЛЕННЫМИ ВОДОЕМАМИ + 3D АРАЛ -->
+    <section class="py-20 scroll-reveal">
+      <div class="max-w-6xl mx-auto px-5 sm:px-8">
+        <div class="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h2 data-i18n="int2_title" class="font-serif-editorial text-3xl sm:text-5xl font-semibold text-[#14181D]"></h2>
+            <p data-i18n="int2_sub" class="text-sm sm:text-base text-neutral-600 mt-1.5 max-w-2xl"></p>
+          </div>
+          <button id="kz-reset-btn" onclick="resetKzView()" class="hidden px-5 py-2.5 bg-[#14181D] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#0F3556] transition-colors shrink-0 self-start sm:self-auto" data-i18n="btn_reset_kz"></button>
+        </div>
+
+        <div class="w-full bg-[#C8C0B0] overflow-hidden">
+          <div class="flex flex-col lg:flex-row w-full min-h-[590px]">
+
+            <!-- Левая панель информации (Казахстан - без строки "Находится" и без коробок) -->
+            <div id="kz-info-box" class="hidden lg:w-5/12 bg-[#F6F5F0] p-6 sm:p-9 flex-col justify-between z-10 fade-transition">
+              <div id="kz-info-inner" class="space-y-5 fade-transition">
+                <div class="flex items-baseline justify-between gap-4">
+                  <h3 id="kz-name" class="font-serif-editorial text-3xl sm:text-4xl font-semibold text-[#14181D] leading-tight"></h3>
+                  <span id="kz-aral-year-tag" class="hidden text-xl font-bold text-[#0F3556]">1960</span>
+                </div>
+
+                <div class="photo-slot h-48">
+                  <img id="kz-photo" src="" alt="Kazakhstan water body" />
+                </div>
+
+                <p id="kz-problem" class="text-sm sm:text-base text-neutral-800 leading-relaxed"></p>
+                <p id="kz-solution" class="text-sm sm:text-base text-neutral-800 leading-relaxed"></p>
+              </div>
+
+              <div class="pt-6 mt-6">
+                <button onclick="resetKzView()" class="px-5 py-2.5 bg-[#14181D] text-white text-xs font-semibold uppercase tracking-wider hover:bg-[#0F3556] transition-colors" data-i18n="btn_reset_kz"></button>
+              </div>
+            </div>
+
+            <!-- Правая область: 3D-карта Казахстана + прижатая снизу шкала годов Арала -->
+            <div id="kz-canvas-wrap" class="w-full lg:w-full flex flex-col relative">
+              <div id="kz-viewport-box" class="w-full h-[550px] sm:h-[590px] relative">
+                <canvas id="kz-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                <div id="kz-hover-label" class="pointer-events-none fixed hidden px-3.5 py-1.5 bg-[#14181D] text-white text-xs font-semibold tracking-wide z-50"></div>
+              </div>
+
+              <!-- Полоска с годами ПРЯМО СНИЗУ КАРТЫ (только для Аральского моря) -->
+              <div id="aral-timeline-bar" class="hidden w-full bg-[#14181D] text-[#F6F5F0] px-5 py-4 z-30 select-none">
+                <div class="flex items-center justify-between text-xs mb-2">
+                  <span data-i18n="aral_timeline_caption" class="text-neutral-300 font-medium"></span>
+                  <span id="aral-year-display" class="font-bold text-base text-[#38BDF8]">1960</span>
+                </div>
+                <input
+                  id="aral-slider"
+                  type="range"
+                  min="0"
+                  max="11"
+                  step="1"
+                  value="0"
+                  class="aral-flush-slider"
+                />
+                <div class="flex justify-between text-[11px] text-neutral-400 mt-2">
+                  <button type="button" onclick="setAralStep(0)" class="hover:text-white">1960</button>
+                  <button type="button" onclick="setAralStep(1)" class="hover:text-white">1970</button>
+                  <button type="button" onclick="setAralStep(2)" class="hover:text-white">1980</button>
+                  <button type="button" onclick="setAralStep(3)" class="hover:text-white">1985</button>
+                  <button type="button" onclick="setAralStep(4)" class="hover:text-white">1990</button>
+                  <button type="button" onclick="setAralStep(5)" class="hover:text-white">1995</button>
+                  <button type="button" onclick="setAralStep(6)" class="hover:text-white">2000</button>
+                  <button type="button" onclick="setAralStep(7)" class="hover:text-white">2005</button>
+                  <button type="button" onclick="setAralStep(8)" class="hover:text-white">2010</button>
+                  <button type="button" onclick="setAralStep(9)" class="hover:text-white">2015</button>
+                  <button type="button" onclick="setAralStep(10)" class="hover:text-white">2020</button>
+                  <button type="button" onclick="setAralStep(11)" class="hover:text-white">2026</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ФУТЕР С ВИДЕОПЛЕЕРОМ glo.mp4 И УЧАСТНИКАМИ -->
+  <footer class="bg-[#14181D] text-[#F6F5F0] py-16">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 space-y-12">
+
+      <!-- Только экран видео glo.mp4 (со встроенным управлением звуком и полным экраном) -->
+      <div class="w-full max-w-4xl mx-auto">
+        <video
+          id="footer-video"
+          src="glo.mp4"
+          controls
+          playsinline
+          preload="metadata"
+          class="w-full aspect-video bg-black block"
+        ></video>
+      </div>
+
+      <!-- Информация о проекте и участниках -->
+      <div class="pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
+        <div>
+          <div class="font-bold text-lg mb-1">GidWave</div>
+          <p data-i18n="footer_project" class="text-sm text-neutral-300"></p>
+        </div>
+
+        <div>
+          <div data-i18n="footer_part_heading" class="text-xs uppercase tracking-wider text-neutral-400 mb-2"></div>
+          <div id="footer-members" class="flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold text-white"></div>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <script>
+    // ==========================================
+    // НАЗВАНИЯ ФАЙЛОВ ФОТОГРАФИЙ И ВИДЕО (МЕНЯТЬ ЗДЕСЬ)
+    // ==========================================
+    const PHOTO_FILES = {
+      // Видео в футере
+      "Видео в футере": "glo.mp4",
+
+      // Главный слайд мониторинга (16:9)
+      "Мониторинг (16:9)": "bfc20cec-33c2-4ecc-94de-2b246b0d87e6.jpeg",
+
+      // Фото в теоретических блоках
+      "Гидросфера (теория 1)": "hydro_theory_1.jpg",
+      "Гидросфера (теория 2)": "hydro_theory_2.jpg",
+      "Экология (теория)": "eco_theory.jpg",
+
+      // Карта Мира (10 водных объектов)
+      "Саргассово море": "sargasso_sea.jpg",
+      "Мексиканский залив": "gulf_of_mexico.jpg",
+      "Река Амазонка": "amazon_river.jpg",
+      "Большое Соленое озеро": "great_salt_lake.jpg",
+      "Река Миссисипи": "mississippi_river.jpg",
+      "Мертвое море": "dead_sea.jpg",
+      "Озеро Чад": "lake_chad.jpg",
+      "Река Ганг": "ganges_river.jpg",
+      "Река Янцзы": "yangtze_river.jpg",
+      "Большой Барьерный риф": "great_barrier_reef.jpg",
+
+      // Карта Казахстана (9 водных объектов)
+      "Аральское море": "aral_sea.jpg",
+      "Каспийское море": "caspian_sea.jpg",
+      "Озеро Балхаш": "lake_balkhash.jpg",
+      "Река Иртыш": "irtysh_river.jpg",
+      "Река Или": "ili_river.jpg",
+      "Река Сырдарья": "syrdarya_river.jpg",
+      "Река Урал": "ural_river.jpg",
+      "Озеро Алаколь": "lake_alakol.jpg",
+      "Озеро Зайсан": "lake_zaysan.jpg"
+    };
+
+    // Резервные фотографии для предпросмотра (пока локальные файлы из репозитория еще не загружены рядом с index.html)
+    const PREVIEW_FALLBACKS = {
+      "Мониторинг (16:9)": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=85",
+      "Гидросфера (теория 1)": "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80",
+      "Гидросфера (теория 2)": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
+      "Экология (теория)": "https://images.unsplash.com/photo-1621451537084-482c73073a0f?auto=format&fit=crop&w=1000&q=80",
+      "Саргассово море": "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=900&q=80",
+      "Мексиканский залив": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80",
+      "Река Амазонка": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80",
+      "Большое Соленое озеро": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80",
+      "Река Миссисипи": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+      "Мертвое море": "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=900&q=80",
+      "Озеро Чад": "https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=900&q=80",
+      "Река Ганг": "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?auto=format&fit=crop&w=900&q=80",
+      "Река Янцзы": "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=900&q=80",
+      "Большой Барьерный риф": "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=900&q=80",
+      "Аральское море": "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=900&q=80",
+      "Каспийское море": "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=900&q=80",
+      "Озеро Балхаш": "https://images.unsplash.com/photo-1439066615861-d1af74d74000?auto=format&fit=crop&w=900&q=80",
+      "Река Иртыш": "https://images.unsplash.com/photo-1437482078695-73f5ca6c96e2?auto=format&fit=crop&w=900&q=80",
+      "Река Или": "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=900&q=80",
+      "Река Сырдарья": "https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?auto=format&fit=crop&w=900&q=80",
+      "Река Урал": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=80",
+      "Озеро Алаколь": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80",
+      "Озеро Зайсан": "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=900&q=80"
+    };
+
+    function bindPhotoFromConfig(imgEl, key) {
+      if (!imgEl) return;
+      const fileName = PHOTO_FILES[key] || "";
+      imgEl.dataset.photoKey = key;
+      imgEl.onerror = function () {
+        if (this.dataset.fallbackApplied !== "1" && PREVIEW_FALLBACKS[key]) {
+          this.dataset.fallbackApplied = "1";
+          this.src = PREVIEW_FALLBACKS[key];
+        }
+      };
+      imgEl.dataset.fallbackApplied = "0";
+      imgEl.src = fileName;
+    }
+
+    function initStaticPhotos() {
+      bindPhotoFromConfig(document.getElementById('img-monitoring-16-9'), "Мониторинг (16:9)");
+      bindPhotoFromConfig(document.getElementById('img-theory-1'), "Гидросфера (теория 1)");
+      bindPhotoFromConfig(document.getElementById('img-theory-2'), "Гидросфера (теория 2)");
+      bindPhotoFromConfig(document.getElementById('img-eco-theory'), "Экология (теория)");
+
+      const vEl = document.getElementById('footer-video');
+      if (vEl) {
+        vEl.src = PHOTO_FILES["Видео в футере"] || "glo.mp4";
+        vEl.volume = 0.8;
+      }
+    }
+
+    // Управление видео glo.mp4 в футере (воспроизведение, звук -/+, полный экран)
+    function toggleFooterVideoPlay() {
+      const video = document.getElementById('footer-video');
+      if (!video) return;
+      if (video.paused) {
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+      updateVideoButtonsState();
+    }
+
+    function updateVideoButtonsState() {
+      const video = document.getElementById('footer-video');
+      if (!video) return;
+      const dict = i18n[currentLang];
+      const label = video.paused ? dict.video_btn_play : dict.video_btn_pause;
+      const btn1 = document.getElementById('footer-video-play-btn');
+      const btn2 = document.getElementById('bar-play-label');
+      if (btn1) btn1.textContent = label;
+      if (btn2) btn2.textContent = label;
+    }
+
+    function setFooterVideoVolume(val) {
+      const video = document.getElementById('footer-video');
+      if (!video) return;
+      const clamped = Math.max(0, Math.min(1, parseFloat(val)));
+      video.muted = (clamped === 0);
+      video.volume = clamped;
+      const slider = document.getElementById('footer-video-volume');
+      if (slider) slider.value = clamped;
+      const readout = document.getElementById('footer-video-vol-Readout');
+      if (readout) readout.textContent = Math.round(clamped * 100) + '%';
+    }
+
+    function changeFooterVideoVolume(delta) {
+      const video = document.getElementById('footer-video');
+      if (!video) return;
+      const current = video.muted ? 0 : video.volume;
+      setFooterVideoVolume(current + delta);
+    }
+
+    function openFooterVideoFullscreen() {
+      const video = document.getElementById('footer-video');
+      const container = document.getElementById('footer-video-container');
+      if (!video || !container) return;
+
+      if (video.requestFullscreen) {
+        video.requestFullscreen().catch(() => toggleCinemaFallback());
+      } else if (video.webkitRequestFullscreen) {
+        video.webkitRequestFullscreen();
+      } else if (container.requestFullscreen) {
+        container.requestFullscreen().catch(() => toggleCinemaFallback());
+      } else {
+        toggleCinemaFallback();
+      }
+    }
+
+    function toggleCinemaFallback() {
+      const container = document.getElementById('footer-video-container');
+      const closeBtn = document.getElementById('bar-close-cinema-btn');
+      if (!container) return;
+      const isExpanded = container.classList.toggle('video-cinema-expanded');
+      if (closeBtn) {
+        closeBtn.classList.toggle('hidden', !isExpanded);
+      }
+    }
+
+    function closeCinemaFallback() {
+      const container = document.getElementById('footer-video-container');
+      const closeBtn = document.getElementById('bar-close-cinema-btn');
+      if (container) container.classList.remove('video-cinema-expanded');
+      if (closeBtn) closeBtn.classList.add('hidden');
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    /* =========================================================================
+       2. СЖАТЫЕ И ТОЧНЫЕ ТЕКСТЫ НА 3 ЯЗЫКАХ (ТОЛЬКО ДЕФИС "-", БЕЗ ВОДЫ)
+       ========================================================================= */
+    let currentLang = 'ru';
+
+    const i18n = {
+      ru: {
+        main_title: "Гидросфера Земли",
+        def_p1: "Гидросфера - это водная оболочка нашей планеты между атмосферой и литосферой. Она объединяет всю свободную воду Земли в жидком, твердом (лед, снег) и газообразном состояниях - всего около 1,386 млрд км³...",
+        def_p2: "Мировой океан покрывает 71% поверхности планеты и вмещает 96,5% всей воды, но она соленая (35 г/л) и непригодна для питья или полива без опреснения.",
+        def_p3: "На пресную воду остается лишь 2,5 - 3%. При этом почти 69% пресных запасов заковано в ледниках, около 30% скрыто под землей, а на доступные реки и озера приходится меньше 1%...",
+        def_quote: "«Вода никогда не стоит на месте - капля, испарившаяся сегодня над океаном, через неделю выпадает снегом на пике Хан-Тенгри...»",
+        def_stat_title: "100% в едином цикле",
+        def_p4: "Все 100% воды связаны единым круговоротом, а верхний слой океана глубиной 50 - 100 метров удерживает солнечное тепло и защищает Землю от резких скачков температур.",
+        def_sub_struct: "Состав водной оболочки",
+        def_struct_p1: "Гидросфера делится на три части: Мировой океан, воды суши (реки, озера, ледники, подземные воды) и водяной пар в атмосфере.",
+        def_renew_title: "16 дней - обновление рек",
+        def_struct_p2: "В ледниках вода задерживается на 8 - 10 тысяч лет, зато в руслах рек полностью обновляется каждые 16 дней...",
+
+        eco_title: "Экологическое состояние гидросферы",
+        eco_sub_ext: "Внешние проблемы",
+        eco_text_ext: "Гидросфера - часть биосферы и неразрывно связана с атмосферой и литосферой. Любая проблема в одном слое вызывает немедленную реакцию в других - идет постоянный «обмен» проблемами (кислотные дожди, эрозия почв, обмеление рек)...",
+        eco_sub_int: "Внутренние проблемы",
+        eco_text_int: "Внутренние проблемы вызваны прямым загрязнением воды. Сброс жидких, твердых и газообразных отходов меняет физические, химические и биологические свойства воды, делая ее опасной для жизни и экономики.",
+        eco_types_heading: "Виды загрязнения воды",
+        eco_outro: "Все виды загрязнений опасны, но наибольший урон наносят радиоактивное и химическое загрязнения. Нефтепродукты, бытовой мусор и промышленные стоки - главные источники угрозы.",
+
+        sol_title: "Пути решения экологических проблем гидросферы",
+        sol_intro: "Для спасения водоемов нужна системная работа сразу по шести направлениям...",
+        sol_examples: "Примеры: восстановление Северного Аральского моря, очистка рек и озер, строительство очистных сооружений.",
+
+        pres_title: "Гидро-экологический мониторинг",
+
+        int1_title: "Мировой водный бассейн",
+        int1_sub: "Нажмите на любой ярко выделенный водный объект на 3D-карте мира - слева плавно откроются главные факты.",
+        btn_reset_world: "Показать весь мир",
+
+        int2_title: "Водные объекты Казахстана",
+        int2_sub: "Нажмите на водный объект на рельефной карте Казахстана. При выборе Аральского моря откроется 3D-модель со шкалой годов снизу.",
+        btn_reset_kz: "Показать весь Казахстан",
+        aral_timeline_caption: "Шкала годов (меняет состояние моря и данные):",
+
+        footer_video_title: "Видеоматериал проекта",
+        footer_video_sub: "Вы можете запустить видео прямо здесь, отрегулировать громкость кнопками - / + или открыть ролик на полный экран.",
+        video_btn_play: "Смотреть видео",
+        video_btn_pause: "Пауза",
+        video_btn_fullscreen: "На полный экран",
+
+        footer_project: "Интерактивный сайт по проекту предмета География 10 «В» класса",
+        footer_part_heading: "Принимали участие",
+        members: ["Мансур", "Алихан", "Ильвия", "Вероника", "Арнур", "Илья Т.", "Яна"],
+
+        label_loc_prefix: "Находится: ",
+        label_prob_prefix: "Эко-проблема: ",
+        label_sol_prefix: "Путь решения: "
+      },
+
+      kz: {
+        main_title: "Жердің гидросферасы",
+        def_p1: "Гидросфера - атмосфера мен литосфера арасындағы планетамыздың су қабығы. Ол Жердегі сұйық, қатты (мұз, қар) және газ күйіндегі барлық суды біріктіреді - барлығы шамамен 1,386 млрд км³...",
+        def_p2: "Дүниежүзілік мұхит Жер бетінің 71%-ын жауып, барлық судың 96,5%-ын құрайды, бірақ ол тұзды (35 г/л) - оны тұщыландырмай ішуге болмайды.",
+        def_p3: "Тұщы судың үлесі тек 2,5 - 3%. Оның 69%-ы мұздықтарда, 30%-ы жер астында, ал қолжетімді өзендер мен көлдерге 1%-дан аз бөлігі ғана тиеді...",
+        def_quote: "«Табиғаттағы су бір орында тұрмайды - бүгін мұхит бетінен буланған тамшы бір аптадан соң Хан Тәңірі шыңына қар болып түседі...»",
+        def_stat_title: "100% біртұтас айналымда",
+        def_p4: "Су ресурстарының 100%-ы біртұтас су айналымына қатысады, ал мұхиттың жоғарғы 50 - 100 метрлік қабаты климатты реттеп тұрады.",
+        def_sub_struct: "Су қабығының құрамы",
+        def_struct_p1: "Гидросфера үш бөліктен тұрады: Дүниежүзілік мұхит, құрлық сулары (өзендер, көлдер, мұздықтар, жерасты сулары) және атмосферадағы су буы.",
+        def_renew_title: "16 күн - өзендердің жаңаруы",
+        def_struct_p2: "Мұздықтарда су 8 - 10 мың жыл сақталса, өзен арналарында әр 16 күн сайын толық жаңарады...",
+
+        eco_title: "Гидросфераның экологиялық жағдайы",
+        eco_sub_ext: "Сыртқы мәселелер",
+        eco_text_ext: "Гидросфера атмосферамен және литосферамен тығыз байланысты. Бір қабаттағы экологиялық мәселе басқаларында бірден реакция тудырып, «мәселелер алмасу» процесі жүреді...",
+        eco_sub_int: "Ішкі мәселелер",
+        eco_text_int: "Ішкі мәселелер судың тікелей ластануынан туындайды. Сұйық, қатты және газ тәрізді қалдықтардың төгілуі судың қасиеттерін өзгертіп, оны халық пен экономика үшін қауіпті етеді.",
+        eco_types_heading: "Судың ластану түрлері",
+        eco_outro: "Ластанудың барлық түрі зиянды, бірақ радиоактивті және химиялық ластану ең үлкен залал келтіреді. Мұнай өнімдері, тұрмыстық қоқыс және зауыт қалдықтары - басты ластаушы көздер.",
+
+        sol_title: "Гидросфераның экологиялық мәселелерін шешу жолдары",
+        sol_intro: "Су айдындарын сақтап қалу үшін алты негізгі бағыт бойынша нақты жұмыс қажет...",
+        sol_examples: "Мысалдар: Солтүстік Арал теңізін қалпына келтіру, өзендер мен көлдерді тазарту, тазарту құрылыстарын салу.",
+
+        pres_title: "Гидро-экологиялық мониторинг",
+
+        int1_title: "Әлемдік су бассейні",
+        int1_sub: "Әлемнің 3D-картасындағы ерекшеленген су нысанын басыңыз - сол жақта негізгі деректер ашылады.",
+        btn_reset_world: "Бүкіл әлемді көрсету",
+
+        int2_title: "Қазақстанның су нысандары",
+        int2_sub: "Қазақстанның бедерлі картасындағы су нысанын басыңыз. Арал теңізін таңдағанда төменде жылдар шкаласы бар 3D-модель ашылады.",
+        btn_reset_kz: "Бүкіл Қазақстанды көрсету",
+        aral_timeline_caption: "Жылдар шкаласы (теңіз деңгейі мен деректерді өзгертеді):",
+
+        footer_video_title: "Жобаның бейнематериалы",
+        footer_video_sub: "Бейнені осы жерден қосып, дыбыс деңгейін - / + батырмаларымен реттей аласыз немесе толық экранға аша аласыз.",
+        video_btn_play: "Бейнені қосу",
+        video_btn_pause: "Кідірту",
+        video_btn_fullscreen: "Толық экранға",
+
+        footer_project: "География пәні бойынша 10 «В» сынып жобасының интерактивті сайты",
+        footer_part_heading: "Қатысқандар",
+        members: ["Мансур", "Алихан", "Ильвия", "Вероника", "Арнур", "Илья Т.", "Яна"],
+
+        label_loc_prefix: "Орналасқан жері: ",
+        label_prob_prefix: "Эко-мәселе: ",
+        label_sol_prefix: "Шешу жолы: "
+      },
+
+      en: {
+        main_title: "The Earth's Hydrosphere",
+        def_p1: "The hydrosphere is the water shell of our planet between the atmosphere and lithosphere. It unites all free water in liquid, solid (ice, snow), and gas states - about 1.386 billion km³ in total...",
+        def_p2: "The World Ocean covers 71% of the globe and holds 96.5% of all water, but it is saline (35 g/L) and unsuitable for drinking or irrigation without desalination.",
+        def_p3: "Fresh water accounts for only 2.5 - 3%. Nearly 69% of it is locked in glaciers, 30% lies underground, leaving less than 1% in accessible rivers and lakes...",
+        def_quote: "«Water never stands still - a droplet evaporating from the ocean today may fall as snow on Khan Tengri next week...»",
+        def_stat_title: "100% in a Unified Cycle",
+        def_p4: "All 100% of water circulates in the hydrological cycle, while the top 50 - 100 meters of the ocean regulate Earth's climate.",
+        def_sub_struct: "Composition of the Hydrosphere",
+        def_struct_p1: "The hydrosphere consists of three parts: the World Ocean, continental waters (rivers, lakes, glaciers, groundwater), and atmospheric water vapor.",
+        def_renew_title: "16 Days - River Renewal",
+        def_struct_p2: "Water stays locked in polar glaciers for 8,000 - 10,000 years, whereas river channel water renews completely every 16 days...",
+
+        eco_title: "Ecological State of the Hydrosphere",
+        eco_sub_ext: "External Problems",
+        eco_text_ext: "As part of the biosphere, the hydrosphere constantly interacts with the atmosphere and lithosphere. Any disturbance in one sphere triggers immediate chain reactions in the others...",
+        eco_sub_int: "Internal Problems",
+        eco_text_int: "Internal problems stem from direct water contamination. Discharging liquid, solid, and gaseous waste alters water's physical, chemical, and biological properties, making it hazardous.",
+        eco_types_heading: "Types of Water Pollution",
+        eco_outro: "All forms of pollution are harmful, yet radioactive and chemical contamination cause the worst damage. Oil products, solid waste, and industrial sewage are the primary culprits.",
+
+        sol_title: "Solutions to Ecological Problems of the Hydrosphere",
+        sol_intro: "Protecting water resources requires coordinated action across six key areas...",
+        sol_examples: "Examples: restoration of the Northern Aral Sea, cleaning rivers and lakes, building wastewater treatment plants.",
+
+        pres_title: "Hydro-Ecological Monitoring",
+
+        int1_title: "Global Water Basin",
+        int1_sub: "Click any highlighted water body on the 3D world map - key facts smoothly open on the left.",
+        btn_reset_world: "Show Whole World",
+
+        int2_title: "Water Bodies of Kazakhstan",
+        int2_sub: "Click any water body on the relief map of Kazakhstan. Selecting the Aral Sea opens the 3D basin model with a timeline below.",
+        btn_reset_kz: "Show All Kazakhstan",
+        aral_timeline_caption: "Timeline slider (updates 3D sea state and chronicle):",
+
+        footer_video_title: "Project Video Showcase",
+        footer_video_sub: "Play the video right here, adjust sound volume with the - / + controls, or expand to full screen.",
+        video_btn_play: "Play Video",
+        video_btn_pause: "Pause",
+        video_btn_fullscreen: "Full Screen",
+
+        footer_project: "Interactive website for the Grade 10 'V' Geography project",
+        footer_part_heading: "Participants",
+        members: ["Mansur", "Alikhan", "Ilviya", "Veronika", "Arnur", "Ilya T.", "Yana"],
+
+        label_loc_prefix: "Located: ",
+        label_prob_prefix: "Eco-problem: ",
+        label_sol_prefix: "Solution path: "
+      }
+    };
+
+    const pollutionTypes = {
+      ru: [
+        { name: "Физическое", desc: "Попадание в воду песка, глины, пыли, золы и радиоактивных примесей - снижает прозрачность воды и заиливает дно." },
+        { name: "Тепловое", desc: "Сброс нагретой воды от охлаждения оборудования ТЭС и заводов - вытесняет кислород и вызывает «цветение» воды." },
+        { name: "Биологическое", desc: "Попадание вирусов, бактерий, грибков и паразитов со стоками канализации и ферм - источник опасных инфекций..." },
+        { name: "Химическое", desc: "Отравление воды солями тяжелых металлов, кислотами и щелочами от заводов и рудников." },
+        { name: "Органическое", desc: "Загрязнение нефтью, нефтепродуктами и отходами животноводства - нефтяная пленка перекрывает доступ кислорода." },
+        { name: "Поверхностное", desc: "Попадание в водоемы пестицидов, гербицидов с полей и активных веществ моющих средств (ПАВ)." }
+      ],
+      kz: [
+        { name: "Физикалық", desc: "Суға құмның, саздың, шаңның, күлдің және радиоактивті қоспалардың түсуі - су мөлдірлігін төмендетеді." },
+        { name: "Жылулық", desc: "ЖЭО мен зауыт жабдықтарын салқындатудан шыққан жылы суды төгу - судағы оттегіні азайтады." },
+        { name: "Биологиялық", desc: "Кәріз суларымен бірге вирустардың, бактериялардың, саңырауқұлақтар мен паразиттердің түсуі..." },
+        { name: "Химиялық", desc: "Су құрамындағы ауыр металл тұздары, қышқылдар мен сілтілер арқылы улану." },
+        { name: "Органикалық", desc: "Суға мұнайдың, мұнай өнімдерінің және мал шаруашылығы қалдықтарының түсуі." },
+        { name: "Беткі", desc: "Егістік пестицидтерімен, гербицидтермен және жуғыш заттардың белсенді қоспаларымен ластану." }
+      ],
+      en: [
+        { name: "Physical", desc: "Entry of sand, clay, dust, ash, and radioactive particles into water - reduces clarity and silts up riverbeds." },
+        { name: "Thermal", desc: "Discharging heated cooling water from power plants - depletes dissolved oxygen and triggers algal blooms." },
+        { name: "Biological", desc: "Entry of viruses, bacteria, fungi, and parasites via untreated sewage and livestock waste..." },
+        { name: "Chemical", desc: "Contamination by heavy metal salts, acids, and alkalis from industrial and mining effluents." },
+        { name: "Organic", desc: "Spills of crude oil, petroleum derivatives, and animal waste that coat water surfaces and block oxygen." },
+        { name: "Surface", desc: "Runoff of pesticides, herbicides, toxic agents, and synthetic detergent surfactants." }
+      ]
+    };
+
+    const solutionsList = {
+      ru: [
+        { title: "Очистка сточных вод", text: "использование специальных сооружений для удаления вредных веществ из воды. Например, очистка промышленных стоков." },
+        { title: "Борьба с мусором", text: "сокращение использования пластика и уборка отходов из водоемов." },
+        { title: "Рациональное использование воды", text: "экономия пресной воды и сокращение ее потерь (оборотное водоснабжение и капельный полив)." },
+        { title: "Защита водных ресурсов", text: "создание охраняемых природных территорий и водоохранных зон по берегам." },
+        { title: "Предотвращение разливов нефти", text: "строгий контроль за нефтедобычей и транспортировкой нефти." },
+        { title: "Восстановление водоемов", text: "проведение мероприятий по восстановлению Аральского моря и расчистка русел рек." }
+      ],
+      kz: [
+        { title: "Сарқынды суларды тазарту", text: "судан зиянды заттарды жою үшін арнайы құрылыстарды пайдалану. Мысалы, өнеркәсіптік қалдықтарды тазарту." },
+        { title: "Қоқыспен күрес", text: "пластикті пайдалануды азайту және су айдындарын қалдықтардан тазарту." },
+        { title: "Суды тиімді пайдалану", text: "тұщы суды үнемдеу және оның ысырап болуын қысқарту." },
+        { title: "Су ресурстарын қорғау", text: "ерекше қорғалатын табиғи аумақтар мен су қорғау белдеулерін құру." },
+        { title: "Мұнайдың төгілуін болдырмау", text: "мұнай өндіруді және мұнай тасымалдауды қатаң бақылау." },
+        { title: "Су айдындарын қалпына келтіру", text: "Арал теңізін қалпына келтіру және өзен арналарын тазарту." }
+      ],
+      en: [
+        { title: "Wastewater treatment", text: "using specialized facilities to remove harmful substances from industrial and municipal water." },
+        { title: "Combating litter", text: "reducing plastic use and cleaning solid waste from water bodies." },
+        { title: "Rational water use", text: "conserving fresh water and cutting losses through closed-loop recycling and drip irrigation." },
+        { title: "Protection of water resources", text: "creating protected natural areas and shoreline buffer zones." },
+        { title: "Preventing oil spills", text: "strict monitoring of oil extraction and tanker transportation." },
+        { title: "Restoration of water bodies", text: "carrying out measures to restore the Aral Sea and rehabilitate river channels." }
+      ]
+    };
+
+    /* =========================================================================
+       3. ИНТЕРАКТИВ 1: 10 ВОДНЫХ ОБЪЕКТОВ МИРА (ПРИВЯЗАНЫ К PHOTO_FILES)
+       ========================================================================= */
+    const worldWaterObjects = [
+      {
+        id: "sargasso_sea",
+        photoKey: "Саргассово море",
+        type: "basin",
+        lon: -62.0, lat: 28.0, rx: 0.72, rz: 0.36,
+        ru: {
+          name: "Саргассово море",
+          loc: "Северная Атлантика (море без берегов, ограниченное течениями)",
+          prob: "Из-за кругового вращения океанических течений в Саргассовом море сформировалось гигантское скопление плавучего пластика и микропластика, отравляющее саргассовые водоросли и морскую фауну...",
+          sol: "Перехват пластикового мусора в устьях рек Атлантики, морские системы сбора пластика и международная охрана открытого моря."
+        },
+        kz: {
+          name: "Саргасс теңізі",
+          loc: "Солтүстік Атлант мұхиты (жағалаусыз теңіз)",
+          prob: "Мұхит ағыстарының шеңберлі айналымы салдарынан Саргасс теңізінде жүзетін пластик пен микропластиктің алып жиынтығы пайда болып, балдырлар мен теңіз фаунасын улауда...",
+          sol: "Өзен сағаларында пластикті ұстап қалу және ашық теңізді қалдықтардан тазарту."
+        },
+        en: {
+          name: "Sargasso Sea",
+          loc: "North Atlantic Ocean (bound solely by ocean currents)",
+          prob: "Circular North Atlantic gyre currents trap massive volumes of floating plastic and microplastics inside the Sargassum seaweed mats...",
+          sol: "Intercepting riverine plastic before it reaches the ocean and deploying open-sea cleanup vessels."
+        }
+      },
+      {
+        id: "gulf_of_mexico",
+        photoKey: "Мексиканский залив",
+        type: "basin",
+        lon: -90.0, lat: 25.0, rx: 0.56, rz: 0.40,
+        ru: {
+          name: "Мексиканский залив",
+          loc: "Атлантический океан (США, Мексика, Куба)",
+          prob: "Загрязнение от тысяч морских нефтяных платформ и образование каждое лето бескислородной «мертвой зоны» площадью до 20 000 км² из-за стоков удобрений...",
+          sol: "Автоматическая защита глубоководных скважин, сокращение сброса нитратов на 50% и восстановление мангровых лесов."
+        },
+        kz: {
+          name: "Мексика шығанағы",
+          loc: "Атлант мұхиты (АҚШ, Мексика, Куба)",
+          prob: "Теңіздегі мұнай платформаларынан мұнай төгілу қаупі және тыңайтқыштар салдарынан 20 000 км² оттегісіз «өлі аймақтың» пайда болуы...",
+          sol: "Мұнай ұңғымаларын қатаң бақылау және өзендерден келетін нитраттарды 50%-ға азайту."
+        },
+        en: {
+          name: "Gulf of Mexico",
+          loc: "Atlantic Ocean (USA, Mexico, Cuba)",
+          prob: "Offshore oil extraction risks combined with a seasonal 20,000 km² hypoxic 'dead zone' fueled by river nutrient runoff...",
+          sol: "Strict offshore well safety controls, cutting basin nitrate runoff by 50%, and coastal wetland restoration."
+        }
+      },
+      {
+        id: "amazon_river",
+        photoKey: "Река Амазонка",
+        type: "river",
+        lon: -62.0, lat: -3.5,
+        points: [[-75, -5.0], [-69, -4.0], [-63, -3.5], [-57, -2.5], [-50, -1.0]],
+        tributaries: [
+          [[-67, -10.5], [-63, -6.5], [-60, -3.3]],
+          [[-66, 2.0], [-62, -1.0], [-60, -3.0]]
+        ],
+        ru: {
+          name: "Река Амазонка",
+          loc: "Южная Америка (Перу, Колумбия, Бразилия)",
+          prob: "Отравление притоков сотнями тонн ртути от нелегальной добычи золота и рекордное обмеление русел из-за вырубки лесов Амазонии...",
+          sol: "Запрет ртутной золотодобычи, охрана тропических лесов и строительство очистных станций в городах бассейна."
+        },
+        kz: {
+          name: "Амазонка өзені",
+          loc: "Оңтүстік Америка (Перу, Колумбия, Бразилия)",
+          prob: "Заңсыз алтын өндіруден төгілген жүздеген тонна сынаппен улану және ормандарды кесу салдарынан өзен салаларының тартылуы...",
+          sol: "Сынаппен алтын жууды тоқтату және Амазония ормандарын қорғау."
+        },
+        en: {
+          name: "Amazon River",
+          loc: "South America (Peru, Colombia, Brazil)",
+          prob: "Severe mercury contamination from illegal gold mining alongside tributary droughts triggered by rainforest deforestation...",
+          sol: "Halting mercury gold mining, protecting rainforests, and building urban sewage treatment."
+        }
+      },
+      {
+        id: "great_salt_lake",
+        photoKey: "Большое Соленое озеро",
+        type: "basin",
+        lon: -112.5, lat: 41.1, rx: 0.34, rz: 0.27,
+        ru: {
+          name: "Большое Соленое озеро",
+          loc: "Северная Америка (США, штат Юта)",
+          prob: "Крупнейшее соленое озеро Западного полушария потеряло 60% площади из-за забора воды рек на орошение. С оголенного дна поднимается токсичная пыль с мышьяком...",
+          sol: "Закрепление гарантированного стока рек в чашу озера и сокращение полива влагоемких культур."
+        },
+        kz: {
+          name: "Үлкен Тұзды көл",
+          loc: "Солтүстік Америка (АҚШ, Юта штаты)",
+          prob: "Құятын өзендерді суаруға бұру салдарынан көл ауданының 60%-ын жоғалтып, құрғаған табанынан күшәла аралас улы шаң көтерілуде...",
+          sol: "Өзендердің көлге құяр ағынын сақтау және су тұтынуды қысқарту."
+        },
+        en: {
+          name: "Great Salt Lake",
+          loc: "North America (Utah, USA)",
+          prob: "Lost 60% of its surface area due to tributary river diversions, exposing toxic arsenic-laden lakebed dust...",
+          sol: "Securing guaranteed instream river flows to the lake and cutting farm irrigation demand."
+        }
+      },
+      {
+        id: "mississippi_river",
+        photoKey: "Река Миссисипи",
+        type: "river",
+        lon: -90.5, lat: 36.5,
+        points: [[-94, 46.5], [-91.5, 41.5], [-90.5, 36.5], [-91.0, 32.5], [-89.5, 29.2]],
+        tributaries: [
+          [[-104, 43.0], [-97, 40.5], [-90.5, 38.5]],
+          [[-82, 39.5], [-86, 37.8], [-89.2, 37.0]]
+        ],
+        ru: {
+          name: "Река Миссисипи",
+          loc: "Северная Америка (США)",
+          prob: "Выносит с фермерских полей свыше 1,5 млн тонн азотных и фосфорных удобрений в год, а бетонные дамбы отрезали реку от фильтрующих пойменных болот...",
+          sol: "Восстановление водно-болотных угодий в пойме, защитные лесополосы вдоль полей и точное дозирование удобрений."
+        },
+        kz: {
+          name: "Миссисипи өзені",
+          loc: "Солтүстік Америка (АҚШ)",
+          prob: "Ауылшаруашылық алқаптарынан жыл сайын 1,5 млн тонна азот пен фосфор тыңайтқыштары шайылып келеді...",
+          sol: "Жайылмадағы сулы-батпақты алқаптарды қалпына келтіру және тыңайтқыштарды шектеу."
+        },
+        en: {
+          name: "Mississippi River",
+          loc: "North America (USA)",
+          prob: "Carries over 1.5 million tons of agricultural nitrogen and phosphorus runoff annually while levees cut off natural filtering wetlands...",
+          sol: "Reconnecting floodplain wetlands, planting riparian buffer strips, and precision fertilizer use."
+        }
+      },
+      {
+        id: "dead_sea",
+        photoKey: "Мертвое море",
+        type: "basin",
+        lon: 35.5, lat: 31.5, rx: 0.25, rz: 0.36,
+        ru: {
+          name: "Мертвое море",
+          loc: "Ближний Восток (Израиль, Палестина, Иордания)",
+          prob: "Уровень воды падает более чем на 1 метр в год из-за забора 90% стока реки Иордан и выпаривания рассолов. Море потеряло треть площади, а на берегах возникли тысячи карстовых провалов...",
+          sol: "Восстановление стока реки Иордан, капельное орошение и подача опресненной воды в котловину."
+        },
+        kz: {
+          name: "Өлі теңіз",
+          loc: "Таяу Шығыс (Израиль, Палестина, Иордания)",
+          prob: "Иордан өзенінің суын шамадан тыс алу салдарынан теңіз деңгейі жылына 1 метрге төмендеп, ауданының үштен бірін жоғалтты...",
+          sol: "Иордан өзенінің ағынын қалпына келтіру және тамшылатып суаруды енгізу."
+        },
+        en: {
+          name: "Dead Sea",
+          loc: "Middle East (Israel, Palestine, Jordan)",
+          prob: "Water levels drop by over 1 meter yearly due to 90% flow diversion from the Jordan River and mineral evaporation ponds, shrinking the sea by a third...",
+          sol: "Restoring Jordan River flows, drip irrigation, and brine replenishment."
+        }
+      },
+      {
+        id: "lake_chad",
+        photoKey: "Озеро Чад",
+        type: "basin",
+        lon: 14.5, lat: 13.0, rx: 0.35, rz: 0.32,
+        ru: {
+          name: "Озеро Чад",
+          loc: "Центральная Африка (Чад, Камерун, Нигер, Нигерия)",
+          prob: "С 1960-х годов площадь бессточного озера сократилась более чем на 90% (с 25 000 до 1500 км²) из-за засух, наступления песков Сахары и разбора рек Шари и Логон на полив...",
+          sol: "Совместное управление стоком реки Шари, посадка зеленого пояса против опустынивания и экономия воды."
+        },
+        kz: {
+          name: "Чад көлі",
+          loc: "Орталық Африка (Чад, Камерун, Нигер, Нигерия)",
+          prob: "1960 жылдардан бері көл ауданы құрғақшылық пен Шари өзенінің суын егістікке алу салдарынан 90%-дан астамға тартылып кетті...",
+          sol: "Шари өзенін бірлесіп басқару және шөлге қарсы жасыл орман белдеуін отырғызу."
+        },
+        en: {
+          name: "Lake Chad",
+          loc: "Central Africa (Chad, Cameroon, Niger, Nigeria)",
+          prob: "Shrunk by over 90% since the 1960s due to persistent droughts, Sahara desert encroachment, and heavy irrigation withdrawals from the Chari River...",
+          sol: "Transboundary management of the Chari River and planting the Great Green Wall belt."
+        }
+      },
+      {
+        id: "ganges_river",
+        photoKey: "Река Ганг",
+        type: "river",
+        lon: 82.5, lat: 25.5,
+        points: [[78.0, 30.0], [80.5, 27.0], [83.5, 25.5], [87.0, 24.5], [90.0, 22.5]],
+        tributaries: [
+          [[77.5, 27.5], [80.0, 26.0], [81.8, 25.4]]
+        ],
+        ru: {
+          name: "Река Ганг",
+          loc: "Южная Азия (Индия и Бангладеш)",
+          prob: "Ежедневный сброс около 3 млрд литров неочищенных бытовых стоков, пластика и токсичных хромовых отходов кожевенных заводов...",
+          sol: "Строительство сети биологических очистных станций «Намами Ганге» и перевод фабрик на замкнутую фильтрацию."
+        },
+        kz: {
+          name: "Ганг өзені",
+          loc: "Оңтүстік Азия (Үндістан мен Бангладеш)",
+          prob: "Күн сайын 3 млрд литр тазартылмаған тұрмыстық кәріз суы, пластик және былғары зауыттарының улы хром қалдықтары төгіледі...",
+          sol: "Өзен бойында биологиялық тазарту бекеттерін салу және зауыттарды тұйық сүзгілеуге көшіру."
+        },
+        en: {
+          name: "Ganges River",
+          loc: "South Asia (India and Bangladesh)",
+          prob: "Receives roughly 3 billion liters of untreated sewage daily plus toxic chromium waste from leather tanneries...",
+          sol: "Expanding sewage treatment plants and enforcing closed-loop industrial filtration."
+        }
+      },
+      {
+        id: "yangtze_river",
+        photoKey: "Река Янцзы",
+        type: "river",
+        lon: 111.0, lat: 30.5,
+        points: [[97.0, 28.5], [104.0, 29.0], [111.0, 30.5], [116.5, 31.0], [121.5, 31.8]],
+        tributaries: [
+          [[107.0, 33.0], [111.0, 31.8], [114.2, 30.6]]
+        ],
+        ru: {
+          name: "Река Янцзы",
+          loc: "Восточная Азия (Китай)",
+          prob: "Интенсивное загрязнение стоками нефтехимических заводов, смывом удобрений и пластиком, а также фрагментация реки каскадами плотин...",
+          sol: "10-летний запрет на промышленный вылов рыбы, перенос химзаводов от берегов и восстановление пойменных озер."
+        },
+        kz: {
+          name: "Янцзы өзені",
+          loc: "Шығыс Азия (Қытай)",
+          prob: "Мұнай-химия зауыттарының қалдықтарымен, тыңайтқыштармен және пластикпен ластану, экожүйенің тозуы...",
+          sol: "Балық аулауға 10 жылдық мораторий енгізу және зиянды зауыттарды жағалаудан көшіру."
+        },
+        en: {
+          name: "Yangtze River",
+          loc: "East Asia (China)",
+          prob: "Heavy pollution from riverside petrochemical plants, fertilizer runoff, and plastic waste alongside dam fragmentation...",
+          sol: "10-year commercial fishing ban, relocating chemical plants away from shores, and restoring floodplain lakes."
+        }
+      },
+      {
+        id: "great_barrier_reef",
+        photoKey: "Большой Барьерный риф",
+        type: "basin",
+        lon: 147.5, lat: -18.0, rx: 0.65, rz: 0.25,
+        ru: {
+          name: "Большой Барьерный риф",
+          loc: "Коралловое море (северо-восточное побережье Австралии)",
+          prob: "Массовое обесцвечивание и гибель кораллов из-за потепления и закисления океана, а также смыва удобрений и пестицидов с прибрежных плантаций...",
+          sol: "Сокращение выбросов парниковых газов, очистка стоков рек Квинсленда и высаживание термостойких колоний кораллов."
+        },
+        kz: {
+          name: "Үлкен Тосқауыл рифі",
+          loc: "Маржан теңізі (Австралияның солтүстік-шығыс жағалауы)",
+          prob: "Мұхит суының жылынуы мен қышқылдануынан және жағалаудағы тыңайтқыштардың шайылуынан маржандардың жаппай түссізденіп, жойылуы...",
+          sol: "Парниктік шығарындыларды азайту, жағалау суларын тазарту және ыстыққа төзімді маржандарды өсіру."
+        },
+        en: {
+          name: "Great Barrier Reef",
+          loc: "Coral Sea (northeastern coast of Australia)",
+          prob: "Mass coral bleaching driven by ocean warming and acidification alongside agricultural sediment and fertilizer runoff...",
+          sol: "Cutting coastal nutrient runoff in Queensland, reducing carbon emissions, and propagating heat-resilient corals."
+        }
+      }
+    ];
+
+    /* =========================================================================
+       4. ИНТЕРАКТИВ 2: 9 ВОДНЫХ ОБЪЕКТОВ КАЗАХСТАНА (ПРИВЯЗАНЫ К PHOTO_FILES)
+       ========================================================================= */
+    const kzWaterObjects = [
+      {
+        id: "aral",
+        photoKey: "Аральское море",
+        isAral: true,
+        type: "aral_complex",
+        lon: 60.2, lat: 45.5,
+        ru: {
+          name: "Аральское море",
+          prob: "Из-за чрезмерного забора воды Сырдарьи и Амударьи на орошение море потеряло 90% объема. На высохшем дне образовалась солончаковая пустыня Аралкум (5,5 млн га), откуда ветры поднимают миллионы тонн токсичной солевой пыли...",
+          sol: "Строительство Кокаральской плотины (сохранившей Северный Арал в Казахстане), модернизация гидроузлов на Сырдарье и посадка более 1 млн га саксаула на осушенном дне."
+        },
+        kz: {
+          name: "Арал теңізі",
+          prob: "Сырдария мен Әмудария суын егістікке шамадан тыс алу салдарынан теңіз көлемінің 90%-ын жоғалтып, орнында 5,5 млн га Аралқұм тұзды шөлі пайда болды...",
+          sol: "Көкарал бөгетін салу арқылы Солтүстік Аралды сақтау және құрғаған теңіз ұлтанына миллиондаған сексеуіл егу."
+        },
+        en: {
+          name: "Aral Sea",
+          prob: "Massive irrigation diversions from the Syr Darya and Amu Darya caused the sea to lose 90% of its volume, leaving the 5.5-million-hectare Aralkum salt desert...",
+          sol: "Preserving Kazakhstan's Northern Aral via the Kokaral Dam and planting over 1 million hectares of saxaul on the dry seabed."
+        }
+      },
+      {
+        id: "caspian",
+        photoKey: "Каспийское море",
+        isAral: false,
+        type: "caspian_basin",
+        lon: 51.0, lat: 44.8,
+        ru: {
+          name: "Каспийское море",
+          prob: "Быстрое обмеление мелководного казахстанского шельфа (глубины 4 - 8 м) и риск нефтяного загрязнения от морских промыслов и старых прибрежных скважин, что угрожает каспийскому тюленю и осетровым...",
+          sol: "Спутниковый контроль нефтедобычи, герметизация старых затопленных скважин и защита резервата каспийского тюленя."
+        },
+        kz: {
+          name: "Каспий теңізі",
+          prob: "Қазақстанға тиесілі таяз солтүстік-шығыс қайраңның тез тартылуы және мұнай өндіру мен ескі ұңғымалардан каспий итбалығы мен бекіреге төнетін қауіп...",
+          sol: "Теңіздегі мұнай кен орындарын қатаң бақылау, ескі ұңғымаларды жабу және итбалық резерватын қорғау."
+        },
+        en: {
+          name: "Caspian Sea",
+          prob: "Rapid shallowing of the Kazakhstani northeastern shelf (4 - 8m deep) alongside hydrocarbon pollution risks to the endangered Caspian seal and sturgeon...",
+          sol: "Satellite monitoring of offshore oil fields, sealing legacy coastal wells, and protecting seal habitats."
+        }
+      },
+      {
+        id: "balkhash",
+        photoKey: "Озеро Балхаш",
+        isAral: false,
+        type: "balkhash_crescent",
+        lon: 74.8, lat: 46.2,
+        ru: {
+          name: "Озеро Балхаш",
+          prob: "Уникальное полупресное-полусоленое озеро критически зависит от притока реки Или (80% воды) - сокращение стока грозит обмелением и засолением, плюс нагрузка от выбросов цветной металлургии...",
+          sol: "Межгосударственное сохранение стока реки Или, удержание уровня озера не ниже 341 м и фильтрация промышленных выбросов в Балхаше."
+        },
+        kz: {
+          name: "Балқаш көлі",
+          prob: "Жартылай тұщы, жартылай тұзды көл Іле өзенінің ағынына (80%) тікелей тәуелді - су азайса, көл тартылып, тұзданып кету қаупі бар...",
+          sol: "Іле өзенінің трансшекаралық ағынын сақтау, көл деңгейін 341 метрден төмен түсірмеу және зауыт сүзгілерін жаңарту."
+        },
+        en: {
+          name: "Lake Balkhash",
+          prob: "Split into freshwater western and saline eastern basins, it relies on the Ili River for 80% of inflow - reduced flow risks salinization and shrinkage...",
+          sol: "Securing transboundary Ili River inflows, maintaining the 341m lake elevation, and closed-loop smelter filtration."
+        }
+      },
+      {
+        id: "zaysan",
+        photoKey: "Озеро Зайсан",
+        isAral: false,
+        type: "basin",
+        lon: 83.8, lat: 48.0, rx: 0.56, rz: 0.30,
+        ru: {
+          name: "Озеро Зайсан",
+          prob: "Сезонные перепады уровня воды в системе Бухтарминского водохранилища, сокращение стока Черного Иртыша и засорение дна брошенными синтетическими рыболовными сетями...",
+          sol: "Стабилизация уровня воды в период нереста рыб, очистка дна от пластиковых сетей и охрана дельты Черного Иртыша."
+        },
+        kz: {
+          name: "Зайсан көлі",
+          prob: "Су деңгейінің маусымдық ауытқуы, Қара Ертіс ағынының азаюы және көл түбіндегі тасталған синтетикалық балық аулары...",
+          sol: "Уылдырық шашу кезінде су деңгейін тұрақты ұстау және көл табанын пластик аулардан тазарту."
+        },
+        en: {
+          name: "Lake Zaysan",
+          prob: "Seasonal water level fluctuations, reduced Black Irtysh inflows, and synthetic ghost fishing nets littering the lakebed...",
+          sol: "Stabilizing spring water levels during fish spawning and clearing abandoned synthetic nets."
+        }
+      },
+      {
+        id: "alakol",
+        photoKey: "Озеро Алаколь",
+        isAral: false,
+        type: "basin",
+        lon: 81.6, lat: 46.1, rx: 0.46, rz: 0.32,
+        ru: {
+          name: "Озеро Алаколь",
+          prob: "Интенсивный размыв берегов штормами (до 5 - 15 метров в год) и рост бытовых стоков из-за бурного развития туристических зон отдыха у границ Алакольского заповедника...",
+          sol: "Берегоукрепительные волноломы и подключение всех баз отдыха к централизованным биологическим очистным станциям."
+        },
+        kz: {
+          name: "Алакөл көлі",
+          prob: "Дауылды толқындардың жағалауды шайып кетуі (жылына 5 - 15 м) және туристік аймақтардағы кәріз суларын тазарту мәселесі...",
+          sol: "Жағалауды бекіту бөгеттерін салу және демалыс орындарын орталық биологиялық тазарту жүйесіне қосу."
+        },
+        en: {
+          name: "Lake Alakol",
+          prob: "Severe shoreline wave erosion (5 - 15m per year) and rising tourism wastewater pressure near the Alakol Biosphere Reserve...",
+          sol: "Building coastal wave-breakers and connecting all lakeside resorts to centralized biological sewage plants."
+        }
+      },
+      {
+        id: "irtysh",
+        photoKey: "Река Иртыш",
+        isAral: false,
+        type: "river",
+        lon: 79.0, lat: 51.0,
+        points: [[85.0, 47.6], [83.8, 48.0], [82.6, 49.9], [80.2, 50.4], [76.9, 52.3], [75.0, 53.8]],
+        ru: {
+          name: "Река Иртыш",
+          prob: "Историческое загрязнение притоков тяжелыми металлами (медь, цинк, кадмий, ртуть) от металлургических и химических заводов Усть-Каменогорска и Павлодара...",
+          sol: "Перевод комбинатов на бессточный цикл, изоляция старых шламонакопителей и сохранение весенних попусков воды в пойму."
+        },
+        kz: {
+          name: "Ертіс өзені",
+          prob: "Өскемен мен Павлодардағы металлургиялық және химиялық зауыттардың ауыр металл қалдықтарымен ластану қаупі...",
+          sol: "Кәсіпорындарды тұйық су айналымына көшіру және Ертіс жайылмасына көктемгі экологиялық су жіберу."
+        },
+        en: {
+          name: "Irtysh River",
+          prob: "Industrial heavy metal pollution (copper, zinc, legacy mercury) from metallurgical and chemical plants in Oskemen and Pavlodar...",
+          sol: "Zero-discharge closed-loop industrial systems, isolating legacy tailings, and preserving spring floodplain releases."
+        }
+      },
+      {
+        id: "ili",
+        photoKey: "Река Или",
+        isAral: false,
+        type: "river",
+        lon: 77.0, lat: 44.3,
+        points: [[80.4, 43.9], [78.5, 43.8], [77.0, 44.2], [75.8, 44.9], [74.4, 45.6]],
+        ru: {
+          name: "Река Или",
+          prob: "Потеря до 35% забираемой на полив воды в старых земляных каналах без облицовки и риск обсыхания озер и тугайных лесов в дельте Или...",
+          sol: "Бетонирование оросительных каналов, переход на капельный полив в Жетысу и расчистка проток дельты."
+        },
+        kz: {
+          name: "Іле өзені",
+          prob: "Ескі топырақ каналдарда суаруға алынған судың 35%-ға дейін жоғалуы және Іле атырауындағы тоғайлар мен көлдердің кебуі...",
+          sol: "Суару каналдарын бетондау, тамшылатып суаруға көшу және атырау салаларын тазарту."
+        },
+        en: {
+          name: "Ili River",
+          prob: "Up to 35% of irrigation water is lost in unlined earthen canals, threatening the wetlands and tugai forests of the Ili delta...",
+          sol: "Lining irrigation canals, expanding drip irrigation across Zhetysu, and clearing delta channels."
+        }
+      },
+      {
+        id: "syrdarya",
+        photoKey: "Река Сырдарья",
+        isAral: false,
+        type: "river",
+        lon: 65.5, lat: 44.8,
+        points: [[68.6, 41.3], [67.8, 43.0], [65.5, 44.8], [63.2, 45.5], [61.2, 46.0]],
+        ru: {
+          name: "Река Сырдарья",
+          prob: "Острый летний дефицит воды из-за полива рисовых и хлопковых полей и сброс обратно в реку соленых коллекторно-дренажных вод с пестицидами...",
+          sol: "Лазерная планировка рисовых полей, капельное орошение и расчистка русла для пропуска зимних паводков в Северный Арал."
+        },
+        kz: {
+          name: "Сырдария өзені",
+          prob: "Күріш пен мақта суарудан жазғы су тапшылығы және егістіктен қайтатын тұзды дренаждық сулармен ластану...",
+          sol: "Күріш алқаптарын лазерлік тегістеу, су үнемдеу және Солтүстік Аралға су жеткізу үшін арнаны тазарту."
+        },
+        en: {
+          name: "Syr Darya River",
+          prob: "Severe summer irrigation shortages combined with saline agricultural drainage return flows raising mineral and pesticide levels...",
+          sol: "Laser-leveling rice fields, drip irrigation, and dredging the channel to deliver flows to the Northern Aral."
+        }
+      },
+      {
+        id: "ural",
+        photoKey: "Река Урал",
+        isAral: false,
+        type: "river",
+        lon: 51.6, lat: 49.5,
+        points: [[54.2, 51.5], [51.4, 51.2], [51.5, 49.2], [51.8, 47.2]],
+        ru: {
+          name: "Река Урал",
+          prob: "Обмеление единственного свободного нерестилища каспийских осетровых из-за зарегулирования верховий и заиливание устья при впадении в Каспий...",
+          sol: "Совместное регулирование весенних паводков, дноуглубление рыбоходных каналов у Атырау и расчистка притоков."
+        },
+        kz: {
+          name: "Жайық өзені (Орал)",
+          prob: "Жоғарғы ағыстағы бөгеттер әсерінен өзеннің таяздануы және Каспийге құяр сағаның лайланып, бекіре уылдырық шашатын жерлердің қысқаруы...",
+          sol: "Көктемгі су жіберуді үйлестіру және Атырау маңындағы балық жүретін саға каналдарын тереңдету."
+        },
+        en: {
+          name: "Ural River",
+          prob: "Shallowing of the last natural spawning river for Caspian sturgeon due to upstream dams and delta siltation...",
+          sol: "Coordinating spring flood releases and dredging fish-passage channels near Atyrau."
+        }
+      }
+    ];
+
+    const aralTimelineSteps = [
+      {
+        year: 1960, north: 1.0, west: 1.0, east: 1.0,
+        ru: "1960 год - Море полноводно: уровень 53,4 м, площадь 68 900 км², соленость 10 г/л. Единая акватория, работают рыбные порты Аральск и Муйнак.",
+        kz: "1960 жыл - Теңіз толық: деңгейі 53,4 м, ауданы 68 900 км², тұздылығы 10 г/л. Біртұтас айдын, балық порттары жұмыс істейді.",
+        en: "1960 - Full sea: level 53.4m, area 68,900 km², salinity 10 g/L. Unified basin with active ports at Aralsk and Moynaq."
+      },
+      {
+        year: 1970, north: 0.92, west: 0.92, east: 0.86,
+        ru: "1970 год - Из-за разбора рек на орошение уровень падает на 2 м (до 51,1 м), площадь сокращается до 60 200 км²...",
+        kz: "1970 жыл - Суару каналдарына су алудан деңгейі 2 метрге төмендеп (51,1 м), ауданы 60 200 км² дейін қысқарды...",
+        en: "1970 - Irrigation diversions drop the sea level by 2m (to 51.1m), shrinking area to 60,200 km²..."
+      },
+      {
+        year: 1980, north: 0.78, west: 0.76, east: 0.64,
+        ru: "1980 год - Уровень упал на 7,5 м, потеряно 40% объема. Соленость выросла до 18 г/л, пресноводная рыба исчезает.",
+        kz: "1980 жыл - Деңгейі 7,5 метрге түсіп, көлемінің 40%-ы жоғалды. Тұздылығы 18 г/л-ге жетті.",
+        en: "1980 - Level drops 7.5m, losing 40% of volume. Salinity reaches 18 g/L, halting freshwater fishing."
+      },
+      {
+        year: 1985, north: 0.68, west: 0.64, east: 0.48,
+        ru: "1985 год - Падение уровня превышает 11 м. Пролив Берга мелеет, со дна поднимаются первые солевые бури...",
+        kz: "1985 жыл - Деңгейі 11 метрден астам төмендеді. Берг бұғазы таязданып, тұзды дауылдар басталды...",
+        en: "1985 - Drop exceeds 11m. Berg Strait shallows and major salt-dust storms begin..."
+      },
+      {
+        year: 1990, north: 0.58, west: 0.52, east: 0.34,
+        ru: "1990 год - Море распадается на две части: Северный (Малый) Арал в Казахстане и Южный (Большой) Арал.",
+        kz: "1990 жыл - Теңіз екіге бөлінді: Қазақстандағы Солтүстік (Кіші) Арал және Оңтүстік (Үлкен) Арал.",
+        en: "1990 - The sea splits into two: the Northern (Small) Aral in Kazakhstan and the Southern (Large) Aral."
+      },
+      {
+        year: 1995, north: 0.54, west: 0.43, east: 0.22,
+        ru: "1995 год - В проливе Берга насыпают первую песчаную дамбу для удержания стока Сырдарьи. Остров Барсакельмес сливается с сушей.",
+        kz: "1995 жыл - Сырдария суын ұстау үшін Берг бұғазында алғашқы құм бөгеті салынды.",
+        en: "1995 - First earthen dike built in the Berg Strait to hold Syr Darya flows; Barsakelmes merges with land."
+      },
+      {
+        year: 2000, north: 0.50, west: 0.34, east: 0.14,
+        ru: "2000 год - Южный Арал делится на Западный и Восточный плесы, остров Возрождения становится полуостровом.",
+        kz: "2000 жыл - Оңтүстік Арал Батыс және Шығыс бөліктерге бөлініп, Возрождение аралы түбекке айналды.",
+        en: "2000 - Southern Aral splits into Western and Eastern lobes; Vozrozhdeniya becomes a peninsula."
+      },
+      {
+        year: 2005, north: 0.74, west: 0.27, east: 0.08,
+        ru: "2005 год - В Казахстане построена капитальная Кокаральская плотина (13 км)! Северный Арал начинает быстро наполняться.",
+        kz: "2005 жыл - Қазақстанда күрделі Көкарал бөгеті (13 км) салынып, Солтүстік Арал тез тола бастады!",
+        en: "2005 - Completion of the 13-km Kokaral Dam in Kazakhstan! Northern Aral begins rapid recovery."
+      },
+      {
+        year: 2010, north: 0.84, west: 0.21, east: 0.03,
+        ru: "2010 год - Северный Арал достиг отметки 42 м, соленость снизилась до 8 - 10 г/л, вернулось более 20 видов рыб.",
+        kz: "2010 жыл - Солтүстік Арал 42 м деңгейге жетіп, тұздылығы 8 - 10 г/л дейін түсті, 20-дан астам балық түрі оралды.",
+        en: "2010 - Northern Aral reaches 42m elevation, salinity drops to 8 - 10 g/L, and 20+ fish species return."
+      },
+      {
+        year: 2015, north: 0.86, west: 0.17, east: 0.01,
+        ru: "2015 год - Полноводный Северный Арал в Казахстане контрастирует с высохшим Восточным плесом пустыни Аралкум на юге.",
+        kz: "2015 жыл - Қазақстандағы тірі Солтүстік Арал мен оңтүстіктегі құрғаған Аралқұм шөлінің айырмашылығы айқын көрінеді.",
+        en: "2015 - Thriving Northern Aral in Kazakhstan contrasts with the dry Aralkum salt flats in the south."
+      },
+      {
+        year: 2020, north: 0.88, west: 0.14, east: 0.02,
+        ru: "2020 год - Море приблизилось к Аральску до 17 км. На осушенном дне высаживают сотни тысяч гектаров саксаула.",
+        kz: "2020 жыл - Теңіз Арал қаласына 17 км жақындады. Құрғаған ұлтанына жүздеген мың гектар сексеуіл егілуде.",
+        en: "2020 - Shorelines edge within 17 km of Aralsk; hundreds of thousands of hectares of saxaul planted on the dry bed."
+      },
+      {
+        year: 2026, north: 0.90, west: 0.12, east: 0.01,
+        ru: "2026 год - Северный Арал стабилен, посадки саксаула превысили 1 млн га, идет укрепление плотины и обводнение залива Сарышыганак.",
+        kz: "2026 жыл - Солтүстік Арал тұрақты, сексеуіл ормандары 1 млн гектардан асты, Сарышығанақ шығанағы суландырылуда.",
+        en: "2026 - Northern Aral remains stable, saxaul forests exceed 1M hectares, and Saryshyganak Bay restoration advances."
+      }
+    ];
+
+    /* =========================================================================
+       5. ПЕРЕКЛЮЧЕНИЕ ЯЗЫКА И ПЛАВНЫЕ АНИМАЦИИ ПОЯВЛЕНИЯ / ИСЧЕЗНОВЕНИЯ
+       ========================================================================= */
+    let selectedWorldIdx = null;
+    let selectedKzIdx = null;
+    let currentAralStepIdx = 0;
+
+    function initScrollRevealAnimations() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+          } else {
+            entry.target.classList.remove('is-visible');
+          }
+        });
+      }, { threshold: 0.12 });
+
+      document.querySelectorAll('.scroll-reveal').forEach(section => {
+        observer.observe(section);
+      });
+    }
+
+    function applyLanguageContent(lang) {
+      currentLang = lang;
+      document.documentElement.lang = lang;
+
+      ['kz', 'ru', 'en'].forEach(code => {
+        const btn = document.getElementById(`btn-lang-${code}`);
+        if (code === lang) {
+          btn.className = "px-2.5 py-1 font-bold text-[#FAF9F5] bg-[#11161C]";
+        } else {
+          btn.className = "px-2.5 py-1 text-neutral-500 hover:text-[#11161C]";
+        }
+      });
+
+      const dict = i18n[lang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) el.textContent = dict[key];
+      });
+
+      // Виды загрязнения: ЧИСТАЯ ОТКРЫТАЯ ЖУРНАЛЬНАЯ ВЕРСТКА БЕЗ КОРОБОК И РАМОК
+      const pList = document.getElementById('pollution-list');
+      pList.innerHTML = '';
+      pollutionTypes[lang].forEach(item => {
+        const row = document.createElement('div');
+        row.className = "grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-8 items-baseline";
+        row.innerHTML = `
+          <div class="md:col-span-3 font-serif-editorial text-2xl font-semibold text-[#0F3556]">${item.name}</div>
+          <div class="md:col-span-9 text-base sm:text-lg text-neutral-800 leading-relaxed">${item.desc}</div>
+        `;
+        pList.appendChild(row);
+      });
+
+      // Пути решения (1. - 6.): ОТКРЫТАЯ ВЕРСТКА БЕЗ КОРОБОК И КАРТОЧЕК
+      const sList = document.getElementById('solutions-list');
+      sList.innerHTML = '';
+      solutionsList[lang].forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = "flex items-baseline gap-5";
+        row.innerHTML = `
+          <span class="font-serif-editorial text-3xl font-bold text-[#0F3556] shrink-0">${index + 1}.</span>
+          <p class="text-base sm:text-lg text-neutral-800 leading-relaxed">
+            <strong class="font-semibold text-[#14181D]">${item.title}</strong> - ${item.text}
+          </p>
+        `;
+        sList.appendChild(row);
+      });
+
+      const fMembers = document.getElementById('footer-members');
+      fMembers.innerHTML = '';
+      dict.members.forEach(m => {
+        const span = document.createElement('span');
+        span.textContent = m;
+        fMembers.appendChild(span);
+      });
+
+      updateVideoButtonsState();
+      if (selectedWorldIdx !== null) populateWorldInfo(selectedWorldIdx);
+      if (selectedKzIdx !== null) populateKzInfo(selectedKzIdx);
+    }
+
+    function setLanguage(lang) {
+      const mainArea = document.getElementById('main-content-area');
+      if (!mainArea || currentLang === lang) {
+        applyLanguageContent(lang);
+        return;
+      }
+      mainArea.classList.add('fade-out-state');
+      setTimeout(() => {
+        applyLanguageContent(lang);
+        mainArea.classList.remove('fade-out-state');
+      }, 220);
+    }
+
+    /* =========================================================================
+       6. ИНТЕРАКТИВ 1: РЕАЛЬНАЯ 3D-КАРТА МИРА С ФИЗИЧЕСКИМ ЛАНДШАФТОМ И ЯРКИМИ ВОДНЫМИ ОБЪЕКТАМИ
+       ========================================================================= */
+    let worldScene, worldCamera, worldRenderer, worldGroup, worldCountryMeshGroup;
+    let worldClickables = [];
+    let worldVisualWaterMeshes = [];
+    let worldPulseRings = [];
+    const WORLD_DEFAULT_CAM = new THREE.Vector3(0, 14.2, 10.5);
+    const WORLD_DEFAULT_LOOK = new THREE.Vector3(0, 0, 0);
+    let worldTargetCamPos = WORLD_DEFAULT_CAM.clone();
+    let worldTargetLookAt = WORLD_DEFAULT_LOOK.clone();
+    let worldCurrentLookAt = WORLD_DEFAULT_LOOK.clone();
+    let worldTargetRotY = 0;
+
+    function lonLatToWorldXZ(lon, lat) {
+      return [lon / 18.0, -lat / 18.0];
+    }
+
+    // Физический 3D-рельеф Земли (горы, нагорья, равнины)
+    function getWorldReliefHeight(lon, lat) {
+      let h = 0.16;
+      // Гималаи, Тибет, Памир, Тянь-Шань
+      h += 0.68 * Math.exp(-(Math.pow((lon - 86) / 14, 2) + Math.pow((lat - 33) / 7, 2)));
+      h += 0.42 * Math.exp(-(Math.pow((lon - 74) / 10, 2) + Math.pow((lat - 41) / 5, 2)));
+      // Анды
+      h += 0.56 * Math.exp(-(Math.pow((lon + 70) / 5.5, 2) + Math.pow((lat + 18) / 24, 2)));
+      // Кордильеры и Скалистые горы
+      h += 0.46 * Math.exp(-(Math.pow((lon + 114) / 10, 2) + Math.pow((lat - 44) / 18, 2)));
+      // Альпы, Кавказ, Иранское нагорье
+      h += 0.36 * Math.exp(-(Math.pow((lon - 44) / 16, 2) + Math.pow((lat - 38) / 7, 2)));
+      h += 0.32 * Math.exp(-(Math.pow((lon - 12) / 7, 2) + Math.pow((lat - 46) / 4, 2)));
+      // Восточно-Африканское нагорье и Эфиопия
+      h += 0.38 * Math.exp(-(Math.pow((lon - 37) / 8, 2) + Math.pow((lat - 4) / 14, 2)));
+      // Небольшая естественная волнистость рельефа
+      h += 0.04 * Math.sin(lon * 0.12) * Math.cos(lat * 0.15);
+      return h;
+    }
+
+    // Естественный физико-географический цвет суши в зависимости от широты и высоты
+    function getWorldBiomeColor(lon, lat, elev) {
+      const c = new THREE.Color();
+      if (elev > 0.62) {
+        c.setHex(0xF0F4F8); // Высокогорные снега Гималаев и Анд
+      } else if (elev > 0.42) {
+        c.setHex(0x8C6D53); // Горные хребты
+      } else if (elev > 0.28) {
+        c.setHex(0xC2A878); // Плато и возвышенности
+      } else {
+        // Пояса растительности: пустыни Сахары/Аравии/Австралии vs зеленые леса и равнины
+        const isSaharaArabia = (lat > 14 && lat < 33 && lon > -16 && lon < 58);
+        const isAusOutback = (lat < -18 && lat > -32 && lon > 116 && lon < 144);
+        const isHighNorth = (lat > 62);
+        if (isSaharaArabia || isAusOutback) {
+          c.setHex(0xD8BE8B); // Песчаные пустыни
+        } else if (isHighNorth) {
+          c.setHex(0xB8C4B4); // Северная тундра
+        } else if (Math.abs(lat) < 14) {
+          c.setHex(0x5F8D52); // Влажные экваториальные леса
+        } else {
+          c.setHex(0x7DA263); // Зеленые умеренные равнины и степи
+        }
+      }
+      return c;
+    }
+
+    function initWorld3D() {
+      const canvas = document.getElementById('world-canvas');
+      const wrap = document.getElementById('world-canvas-wrap');
+      if (!canvas) return;
+
+      worldScene = new THREE.Scene();
+      worldScene.background = new THREE.Color(0x0E3156);
+
+      const w = wrap.clientWidth || 800;
+      const h = wrap.clientHeight || 560;
+
+      worldCamera = new THREE.PerspectiveCamera(38, w / h, 0.1, 120);
+      worldCamera.position.copy(WORLD_DEFAULT_CAM);
+      worldCamera.lookAt(WORLD_DEFAULT_LOOK);
+
+      worldRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      worldRenderer.setSize(w, h);
+      worldRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      worldScene.add(new THREE.AmbientLight(0xffffff, 0.85));
+      const sun = new THREE.DirectionalLight(0xfff8eb, 0.92);
+      sun.position.set(10, 24, 14);
+      worldScene.add(sun);
+
+      worldGroup = new THREE.Group();
+      worldScene.add(worldGroup);
+
+      // 1. Водная гладь Мирового океана с мягким батиметрическим оттенком
+      const oceanGeo = new THREE.PlaneGeometry(23.0, 12.0, 64, 36);
+      oceanGeo.rotateX(-Math.PI / 2);
+      const oPos = oceanGeo.attributes.position;
+      const oCols = [];
+      for (let i = 0; i < oPos.count; i++) {
+        const ox = oPos.getX(i);
+        const oz = oPos.getZ(i);
+        const distCenter = Math.hypot(ox / 11.5, oz / 6.0);
+        const oc = new THREE.Color().setHSL(0.58, 0.68, Math.max(0.18, 0.27 - distCenter * 0.06));
+        oCols.push(oc.r, oc.g, oc.b);
+      }
+      oceanGeo.setAttribute('color', new THREE.Float32BufferAttribute(oCols, 3));
+      const oceanMat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.35,
+        metalness: 0.12
+      });
+      worldGroup.add(new THREE.Mesh(oceanGeo, oceanMat));
+
+      const gridHelper = new THREE.GridHelper(22, 22, 0x1D5284, 0x16436E);
+      gridHelper.position.y = 0.01;
+      gridHelper.scale.z = 0.5;
+      worldGroup.add(gridHelper);
+
+      worldCountryMeshGroup = new THREE.Group();
+      worldGroup.add(worldCountryMeshGroup);
+
+      // 2. Загружаем реальный GeoJSON всех стран мира с физическим ландшафтом и границами
+      loadRealWorldCountriesGeoJSON();
+
+      // 3. Строим 10 ярко выделенных, реалистичных водных объектов мира
+      buildWorldWaterObjects();
+
+      setupWorldInteraction(canvas);
+    }
+
+    async function loadRealWorldCountriesGeoJSON() {
+      try {
+        const res = await fetch('https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson');
+        if (!res.ok) throw new Error('GeoJSON status');
+        const geojson = await res.json();
+        renderWorldCountriesFromGeoJSON(geojson);
+      } catch (e) {
+        renderFallbackWorldCountries();
+      }
+    }
+
+    function renderWorldCountriesFromGeoJSON(geojson) {
+      const borderMat = new THREE.LineBasicMaterial({ color: 0x263228, transparent: true, opacity: 0.68 });
+
+      geojson.features.forEach((feature) => {
+        if (!feature.geometry) return;
+        const name = (feature.properties && feature.properties.name) || '';
+        if (name === 'Antarctica') return;
+
+        const polys = feature.geometry.type === 'Polygon'
+          ? [feature.geometry.coordinates]
+          : feature.geometry.type === 'MultiPolygon'
+          ? feature.geometry.coordinates
+          : [];
+
+        polys.forEach(poly => {
+          const outerRing = poly[0];
+          if (!outerRing || outerRing.length < 3) return;
+
+          const shape = new THREE.Shape();
+          const borderPts3D = [];
+
+          outerRing.forEach((coord, i) => {
+            const [wx, wz] = lonLatToWorldXZ(coord[0], coord[1]);
+            if (i === 0) shape.moveTo(wx, -wz);
+            else shape.lineTo(wx, -wz);
+
+            const elev = getWorldReliefHeight(coord[0], coord[1]);
+            borderPts3D.push(new THREE.Vector3(wx, elev + 0.02, wz));
+          });
+
+          try {
+            const extrudeGeo = new THREE.ExtrudeGeometry(shape, {
+              depth: 0.15,
+              bevelEnabled: false
+            });
+            extrudeGeo.rotateX(-Math.PI / 2);
+
+            const pos = extrudeGeo.attributes.position;
+            const vColors = [];
+            for (let k = 0; k < pos.count; k++) {
+              const py = pos.getY(k);
+              const lon = pos.getX(k) * 18.0;
+              const lat = -pos.getZ(k) * 18.0;
+              const elev = getWorldReliefHeight(lon, lat);
+              if (py > 0.05) {
+                pos.setY(k, elev);
+              }
+              const col = getWorldBiomeColor(lon, lat, elev);
+              vColors.push(col.r, col.g, col.b);
+            }
+            extrudeGeo.setAttribute('color', new THREE.Float32BufferAttribute(vColors, 3));
+            extrudeGeo.computeVertexNormals();
+
+            const countryMat = new THREE.MeshStandardMaterial({
+              vertexColors: true,
+              roughness: 0.82,
+              metalness: 0.05
+            });
+            const mesh = new THREE.Mesh(extrudeGeo, countryMat);
+            worldCountryMeshGroup.add(mesh);
+
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(borderPts3D);
+            const line = new THREE.Line(lineGeo, borderMat);
+            worldCountryMeshGroup.add(line);
+          } catch (err) {
+            // Пропускаем самопересекающиеся микро-острова
+          }
+        });
+      });
+    }
+
+    function renderFallbackWorldCountries() {
+      const fallbackLand = new THREE.Mesh(
+        new THREE.BoxGeometry(16, 0.15, 7),
+        new THREE.MeshStandardMaterial({ color: 0x7DA263 })
+      );
+      worldCountryMeshGroup.add(fallbackLand);
+    }
+
+    function buildWorldWaterObjects() {
+      worldClickables = [];
+      worldVisualWaterMeshes = [];
+      worldPulseRings = [];
+
+      worldWaterObjects.forEach((obj, idx) => {
+        const [cx, cz] = lonLatToWorldXZ(obj.lon, obj.lat);
+        obj.x = cx;
+        obj.z = cz;
+
+        // Глубокий сапфирово-кобальтовый цвет с ярким голубым свечением береговой кромки
+        const waterMat = new THREE.MeshStandardMaterial({
+          color: 0x052659,
+          emissive: 0x0EA5E9,
+          emissiveIntensity: 0.38,
+          roughness: 0.12,
+          metalness: 0.3,
+          side: THREE.DoubleSide
+        });
+
+        const rimLineMat = new THREE.LineBasicMaterial({ color: 0x38BDF8 });
+
+        let visualMesh;
+        if (obj.type === 'river' && obj.points) {
+          const riverGroup = new THREE.Group();
+
+          const curvePts = obj.points.map(pt => {
+            const [px, pz] = lonLatToWorldXZ(pt[0], pt[1]);
+            const py = getWorldReliefHeight(pt[0], pt[1]) + 0.055;
+            return new THREE.Vector3(px, py, pz);
+          });
+          const curve = new THREE.CatmullRomCurve3(curvePts);
+
+          // Светлая береговая окантовка русла реки
+          const bankGeo = new THREE.TubeGeometry(curve, 44, 0.12, 10, false);
+          bankGeo.scale(1, 0.18, 1);
+          const bankMat = new THREE.MeshBasicMaterial({ color: 0x38BDF8 });
+          riverGroup.add(new THREE.Mesh(bankGeo, bankMat));
+
+          // Главное темно-сапфировое русло поверх окантовки
+          const mainChannelGeo = new THREE.TubeGeometry(curve, 44, 0.085, 10, false);
+          mainChannelGeo.scale(1, 0.28, 1);
+          const mainMesh = new THREE.Mesh(mainChannelGeo, waterMat);
+          riverGroup.add(mainMesh);
+
+          // Притоки реки для реалистичной речной сети
+          if (obj.tributaries) {
+            obj.tributaries.forEach(trib => {
+              const tPts = trib.map(pt => {
+                const [tx, tz] = lonLatToWorldXZ(pt[0], pt[1]);
+                const ty = getWorldReliefHeight(pt[0], pt[1]) + 0.05;
+                return new THREE.Vector3(tx, ty, tz);
+              });
+              const tCurve = new THREE.CatmullRomCurve3(tPts);
+              const tGeo = new THREE.TubeGeometry(tCurve, 24, 0.05, 8, false);
+              tGeo.scale(1, 0.25, 1);
+              riverGroup.add(new THREE.Mesh(tGeo, waterMat));
+            });
+          }
+
+          visualMesh = mainMesh;
+          worldGroup.add(riverGroup);
+        } else {
+          // Реалистичный силуэт моря / озера / залива с четким светящимся контуром берега
+          const shape = new THREE.Shape();
+          const rimPts = [];
+          const steps = 40;
+          const rx = Math.min(0.68, obj.rx || 0.42);
+          const rz = Math.min(0.42, obj.rz || 0.30);
+
+          for (let i = 0; i <= steps; i++) {
+            const a = (i / steps) * Math.PI * 2;
+            const rMod = 1 + 0.14 * Math.sin(a * 3 + idx * 1.7) + 0.08 * Math.cos(a * 5 - idx);
+            const sx = Math.cos(a) * rx * rMod;
+            const sy = Math.sin(a) * rz * rMod;
+            if (i === 0) shape.moveTo(sx, sy);
+            else shape.lineTo(sx, sy);
+            rimPts.push(new THREE.Vector3(sx, 0.012, -sy));
+          }
+
+          const geo = new THREE.ShapeGeometry(shape, 24);
+          geo.rotateX(-Math.PI / 2);
+          visualMesh = new THREE.Mesh(geo, waterMat);
+
+          const py = getWorldReliefHeight(obj.lon, obj.lat) + 0.055;
+          visualMesh.position.set(cx, py, cz);
+
+          const rimGeo = new THREE.BufferGeometry().setFromPoints(rimPts);
+          const rimLine = new THREE.Line(rimGeo, rimLineMat);
+          visualMesh.add(rimLine);
+
+          worldGroup.add(visualMesh);
+        }
+
+        // Деликатное пульсирующее гидрологическое кольцо-маячок, чтобы каждый из 10 объектов сразу замечался на карте
+        const beaconGeo = new THREE.RingGeometry(0.14, 0.22, 28);
+        beaconGeo.rotateX(-Math.PI / 2);
+        const beaconMat = new THREE.MeshBasicMaterial({
+          color: 0x38BDF8,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.85
+        });
+        const beaconMesh = new THREE.Mesh(beaconGeo, beaconMat);
+        const by = getWorldReliefHeight(obj.lon, obj.lat) + 0.08;
+        beaconMesh.position.set(cx, by, cz);
+        worldGroup.add(beaconMesh);
+        worldPulseRings.push(beaconMesh);
+
+        visualMesh.userData = { index: idx, baseColor: 0x052659 };
+        worldVisualWaterMeshes.push(visualMesh);
+
+        const hitGeo = new THREE.CylinderGeometry(Math.max(0.55, obj.rx || 0.72), Math.max(0.55, obj.rx || 0.72), 0.8, 18);
+        const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+        const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+        hitMesh.position.set(cx, 0.35, cz);
+        hitMesh.userData = { index: idx, visualMesh };
+        worldGroup.add(hitMesh);
+        worldClickables.push(hitMesh);
+      });
+    }
+
+    function setupWorldInteraction(canvas) {
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let moved = false;
+
+      canvas.addEventListener('mousedown', e => {
+        isDragging = true;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+      });
+
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        if (isDragging) {
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+          worldTargetRotY = Math.max(-0.45, Math.min(0.45, worldTargetRotY + dx * 0.004));
+          startX = e.clientX;
+          startY = e.clientY;
+          return;
+        }
+
+        raycaster.setFromCamera(mouse, worldCamera);
+        const hits = raycaster.intersectObjects(worldClickables);
+        const label = document.getElementById('world-hover-label');
+
+        worldVisualWaterMeshes.forEach(m => {
+          if (selectedWorldIdx !== m.userData.index) {
+            m.material.color.setHex(m.userData.baseColor);
+          }
+        });
+
+        if (hits.length > 0) {
+          const hitObj = hits[0].object;
+          const idx = hitObj.userData.index;
+          hitObj.userData.visualMesh.material.color.setHex(0x04152B);
+          canvas.style.cursor = 'pointer';
+          label.textContent = worldWaterObjects[idx][currentLang].name;
+          label.style.left = (e.clientX + 14) + 'px';
+          label.style.top = (e.clientY + 14) + 'px';
+          label.classList.remove('hidden');
+        } else {
+          canvas.style.cursor = 'grab';
+          label.classList.add('hidden');
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        document.getElementById('world-hover-label').classList.add('hidden');
+      });
+
+      canvas.addEventListener('click', e => {
+        if (moved) return;
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, worldCamera);
+        const hits = raycaster.intersectObjects(worldClickables);
+        if (hits.length > 0) {
+          selectWorldWaterObject(hits[0].object.userData.index);
+        }
+      });
+    }
+
+    function selectWorldWaterObject(idx) {
+      selectedWorldIdx = idx;
+      const obj = worldWaterObjects[idx];
+
+      const infoBox = document.getElementById('world-info-box');
+      const infoInner = document.getElementById('world-info-inner');
+      const canvasWrap = document.getElementById('world-canvas-wrap');
+      const resetBtn = document.getElementById('world-reset-btn');
+
+      infoBox.classList.remove('hidden');
+      infoBox.classList.add('flex');
+      canvasWrap.className = "w-full lg:w-7/12 h-[550px] sm:h-[590px] relative";
+      resetBtn.classList.remove('hidden');
+
+      infoInner.classList.add('fade-out-state');
+      setTimeout(() => {
+        populateWorldInfo(idx);
+        infoInner.classList.remove('fade-out-state');
+      }, 150);
+
+      resizeWorldCanvas();
+      requestAnimationFrame(resizeWorldCanvas);
+
+      worldTargetRotY = 0;
+      worldTargetLookAt.set(obj.x, 0.2, obj.z);
+      worldTargetCamPos.set(obj.x * 0.85, 5.0, obj.z + 4.1);
+
+      worldVisualWaterMeshes.forEach(m => {
+        const isSel = m.userData.index === idx;
+        m.material.color.setHex(isSel ? 0x02132E : m.userData.baseColor);
+        m.material.emissiveIntensity = isSel ? 0.75 : 0.38;
+      });
+    }
+
+    function populateWorldInfo(idx) {
+      const obj = worldWaterObjects[idx];
+      const data = obj[currentLang];
+      const dict = i18n[currentLang];
+
+      document.getElementById('world-name').textContent = data.name;
+      document.getElementById('world-location').textContent = dict.label_loc_prefix + data.loc;
+
+      const photoEl = document.getElementById('world-photo');
+      bindPhotoFromConfig(photoEl, obj.photoKey);
+
+      document.getElementById('world-problem').innerHTML = `<strong class="text-[#11161C]">${dict.label_prob_prefix}</strong>${data.prob}`;
+      document.getElementById('world-solution').innerHTML = `<strong class="text-[#11161C]">${dict.label_sol_prefix}</strong>${data.sol}`;
+    }
+
+    function resetWorldView() {
+      selectedWorldIdx = null;
+      const infoBox = document.getElementById('world-info-box');
+      const canvasWrap = document.getElementById('world-canvas-wrap');
+      const resetBtn = document.getElementById('world-reset-btn');
+
+      infoBox.classList.add('hidden');
+      infoBox.classList.remove('flex');
+      canvasWrap.className = "w-full lg:w-full h-[550px] sm:h-[590px] relative";
+      resetBtn.classList.add('hidden');
+
+      worldTargetRotY = 0;
+      worldTargetLookAt.copy(WORLD_DEFAULT_LOOK);
+      worldTargetCamPos.copy(WORLD_DEFAULT_CAM);
+      worldVisualWaterMeshes.forEach(m => {
+        m.material.color.setHex(m.userData.baseColor);
+        m.material.emissiveIntensity = 0.38;
+      });
+
+      resizeWorldCanvas();
+      requestAnimationFrame(resizeWorldCanvas);
+      setTimeout(resizeWorldCanvas, 100);
+    }
+
+    function resizeWorldCanvas() {
+      const wrap = document.getElementById('world-canvas-wrap');
+      if (!wrap || !worldRenderer || !worldCamera) return;
+      const rect = wrap.getBoundingClientRect();
+      const w = Math.max(300, Math.floor(rect.width));
+      const h = Math.max(400, Math.floor(rect.height));
+      worldCamera.aspect = w / h;
+      worldCamera.updateProjectionMatrix();
+      worldRenderer.setSize(w, h, false);
+    }
+
+    /* =========================================================================
+       7. ИНТЕРАКТИВ 2: ТЕРРИТОРИАЛЬНАЯ 3D-КАРТА КАЗАХСТАНА С ЯРКО ВЫДЕЛЕННЫМИ ВОДОЕМАМИ
+       ========================================================================= */
+    let kzScene, kzCamera, kzRenderer, kzMainGroup, aralDetailGroup;
+    let kzClickables = [];
+    let kzVisualWaterMeshes = [];
+    let kzPulseRings = [];
+    const KZ_DEFAULT_CAM = new THREE.Vector3(0, 12.8, 9.2);
+    const KZ_DEFAULT_LOOK = new THREE.Vector3(0, 0, 0);
+    let kzTargetCamPos = KZ_DEFAULT_CAM.clone();
+    let kzTargetLookAt = KZ_DEFAULT_LOOK.clone();
+    let kzCurrentLookAt = KZ_DEFAULT_LOOK.clone();
+    let kzTargetRotY = 0;
+    let aralTargetRotY = -0.15;
+    let isAral3DMode = false;
+    let aralWaterMesh, aralWaterGeo;
+
+    function lonLatToKzXZ(lon, lat) {
+      return [(lon - 67.0) * 0.42, -(lat - 48.0) * 0.58];
+    }
+
+    // Детальный географический контур границы Республики Казахстан (Мангышлак, Бузачи, ЗКО, Север, Алтай, Жетысу, Тянь-Шань, Устюрт)
+    const kzAccurateBorderLonLat = [
+      [46.5, 48.6], [47.0, 49.8], [48.5, 50.6], [50.2, 51.7], [52.0, 51.6],
+      [53.8, 51.3], [55.4, 50.9], [57.5, 51.0], [59.8, 51.8], [61.2, 53.4],
+      [62.8, 54.2], [65.2, 54.6], [67.8, 55.1], [69.5, 55.4], [71.2, 54.6],
+      [73.4, 54.2], [75.5, 53.9], [77.0, 53.5], [78.6, 52.3], [80.2, 51.4],
+      [82.0, 51.1], [84.2, 50.6], [86.5, 49.7], [87.3, 49.1], [86.0, 48.3],
+      [85.4, 47.2], [83.5, 46.9], [82.6, 45.6], [80.3, 45.1], [80.5, 43.2],
+      [79.3, 42.3], [77.0, 42.7], [74.5, 42.9], [72.2, 42.5], [70.6, 42.1],
+      [69.2, 41.3], [68.0, 40.8], [66.3, 41.7], [64.0, 43.0], [61.8, 43.7],
+      [59.0, 45.0], [56.0, 45.0], [55.8, 42.8], [54.2, 42.0], [52.5, 41.8],
+      [52.4, 43.2], [50.2, 44.4], [51.2, 44.8], [50.8, 45.4], [52.8, 46.2],
+      [51.4, 47.1], [49.4, 46.7], [48.2, 47.4], [46.5, 48.6]
+    ];
+
+    const neighborBorderLinesLonLat = [
+      [[52.5, 41.8], [55.5, 41.2], [58.0, 42.0], [60.2, 41.5], [62.5, 40.2], [66.0, 38.0]],
+      [[70.6, 42.1], [71.8, 41.2], [73.2, 40.5], [73.8, 39.8]],
+      [[79.3, 42.3], [77.5, 41.2], [75.5, 40.4], [73.8, 39.8]],
+      [[87.3, 49.1], [88.5, 49.4], [91.0, 50.0]]
+    ];
+
+    function isInsideKzLonLat(lon, lat) {
+      let inside = false;
+      for (let i = 0, j = kzAccurateBorderLonLat.length - 1; i < kzAccurateBorderLonLat.length; j = i++) {
+        const xi = kzAccurateBorderLonLat[i][0], yi = kzAccurateBorderLonLat[i][1];
+        const xj = kzAccurateBorderLonLat[j][0], yj = kzAccurateBorderLonLat[j][1];
+        const intersect = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi + 0.00001) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    // Рельеф Казахстана (высота над плато территории РК)
+    function getEurasiaKazakhstanRelief(lon, lat) {
+      let h = 0.16;
+
+      // Сарыарка (Казахский мелкосопочник) и горы Каркаралы / Улытау
+      h += 0.34 * Math.exp(-(Math.pow((lon - 73.0) / 6.0, 2) + Math.pow((lat - 48.8) / 2.4, 2)));
+      // Мугоджары
+      h += 0.28 * Math.exp(-(Math.pow((lon - 58.5) / 1.8, 2) + Math.pow((lat - 49.2) / 3.2, 2)));
+      // Плато Устюрт и хребет Каратау на Мангышлаке
+      h += 0.22 * Math.exp(-(Math.pow((lon - 54.5) / 2.8, 2) + Math.pow((lat - 43.6) / 1.8, 2)));
+      // Алтай и Саур-Тарбагатай
+      h += 1.05 * Math.exp(-(Math.pow((lon - 85.2) / 3.2, 2) + Math.pow((lat - 48.8) / 2.0, 2)));
+      // Жетысуский (Джунгарский) Алатау
+      h += 0.98 * Math.exp(-(Math.pow((lon - 79.8) / 2.3, 2) + Math.pow((lat - 45.0) / 1.1, 2)));
+      // Северный Тянь-Шань (Заилийский Алатау, Хан-Тенгри, Каратау)
+      h += 1.32 * Math.exp(-(Math.pow((lon - 77.2) / 4.8, 2) + Math.pow((lat - 42.5) / 1.4, 2)));
+
+      h += 0.025 * Math.sin(lon * 1.4) * Math.cos(lat * 1.6);
+      return h;
+    }
+
+    function initKz3D() {
+      const canvas = document.getElementById('kz-canvas');
+      const box = document.getElementById('kz-viewport-box');
+      if (!canvas) return;
+
+      kzScene = new THREE.Scene();
+      kzScene.background = new THREE.Color(0xC8C0B0);
+
+      const w = box.clientWidth || 800;
+      const h = box.clientHeight || 560;
+
+      kzCamera = new THREE.PerspectiveCamera(36, w / h, 0.1, 120);
+      kzCamera.position.copy(KZ_DEFAULT_CAM);
+      kzCamera.lookAt(KZ_DEFAULT_LOOK);
+
+      kzRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      kzRenderer.setSize(w, h);
+      kzRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      kzScene.add(new THREE.AmbientLight(0xffffff, 0.86));
+      const dir = new THREE.DirectionalLight(0xfff8ea, 0.95);
+      dir.position.set(8, 22, 14);
+      kzScene.add(dir);
+
+      kzMainGroup = new THREE.Group();
+      kzScene.add(kzMainGroup);
+
+      // 1. Фоновая поверхность соседних государств Евразии (спокойный нейтральный тон)
+      const neighborPlaneGeo = new THREE.PlaneGeometry(24, 15, 90, 60);
+      neighborPlaneGeo.rotateX(-Math.PI / 2);
+      const nPos = neighborPlaneGeo.attributes.position;
+      for (let i = 0; i < nPos.count; i++) {
+        const lon = nPos.getX(i) / 0.42 + 67.0;
+        const lat = -nPos.getZ(i) / 0.58 + 48.0;
+        nPos.setY(i, getEurasiaKazakhstanRelief(lon, lat) * 0.45);
+      }
+      neighborPlaneGeo.computeVertexNormals();
+      const neighborMat = new THREE.MeshStandardMaterial({
+        color: 0xD2CBBF,
+        roughness: 0.92,
+        metalness: 0.02
+      });
+      kzMainGroup.add(new THREE.Mesh(neighborPlaneGeo, neighborMat));
+
+      // Тонкие линии границ соседних стран
+      const neighborLineMat = new THREE.LineBasicMaterial({ color: 0x968E80 });
+      neighborBorderLinesLonLat.forEach(lineCoords => {
+        const pts = lineCoords.map(c => {
+          const [nx, nz] = lonLatToKzXZ(c[0], c[1]);
+          const ny = getEurasiaKazakhstanRelief(c[0], c[1]) * 0.45 + 0.04;
+          return new THREE.Vector3(nx, ny, nz);
+        });
+        const lGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        kzMainGroup.add(new THREE.Line(lGeo, neighborLineMat));
+      });
+
+      // 2. ВЫДЕЛЕННОЕ 3D-ПЛАТО ТЕРРИТОРИИ КАЗАХСТАНА С ТОЧНЫМ СИЛУЭТОМ СТРАНЫ И ФИЗИЧЕСКИМ РЕЛЬЕФОМ
+      const kzShape = new THREE.Shape();
+      kzAccurateBorderLonLat.forEach((coord, idx) => {
+        const [kx, kz] = lonLatToKzXZ(coord[0], coord[1]);
+        if (idx === 0) kzShape.moveTo(kx, -kz);
+        else kzShape.lineTo(kx, -kz);
+      });
+
+      // Боковой пьедестал территории Казахстана, чтобы силуэт страны выглядел монументально и четко
+      const kzPedestalGeo = new THREE.ExtrudeGeometry(kzShape, {
+        depth: 0.34,
+        bevelEnabled: true,
+        bevelThickness: 0.04,
+        bevelSize: 0.04,
+        bevelSegments: 2
+      });
+      kzPedestalGeo.rotateX(-Math.PI / 2);
+      const kzPedestalMat = new THREE.MeshStandardMaterial({
+        color: 0x3D4A3A,
+        roughness: 0.75
+      });
+      kzMainGroup.add(new THREE.Mesh(kzPedestalGeo, kzPedestalMat));
+
+      // Высокодетализированный физический рельеф внутри границ Казахстана
+      const kzTopGeo = new THREE.PlaneGeometry(18.5, 10.5, 220, 140);
+      kzTopGeo.rotateX(-Math.PI / 2);
+      const tPos = kzTopGeo.attributes.position;
+      const tCols = [];
+
+      for (let i = 0; i < tPos.count; i++) {
+        const vx = tPos.getX(i);
+        const vz = tPos.getZ(i);
+        const lon = vx / 0.42 + 67.0;
+        const lat = -vz / 0.58 + 48.0;
+        const inside = isInsideKzLonLat(lon, lat);
+        const relief = getEurasiaKazakhstanRelief(lon, lat);
+
+        if (inside) {
+          tPos.setY(i, 0.35 + relief);
+        } else {
+          tPos.setY(i, -0.25); // Скрываем вершины за пределами границы РК под фоном соседей
+        }
+
+        const c = new THREE.Color();
+        if (!inside) {
+          c.setHex(0xD2CBBF);
+        } else if (lon < 54.0 && lat > 45.5 && lat < 49.5) {
+          c.setHex(0x719F5E); // Прикаспийская низменность
+        } else if (relief < 0.26) {
+          c.setHex(0x88AB68); // Зеленые лесостепи севера и равнины
+        } else if (relief < 0.52) {
+          c.setHex(0xD2B77C); // Золотистая степь Сарыарки, Туран и Бетпак-Дала
+        } else if (relief < 0.98) {
+          c.setHex(0x8F6B4E); // Хребты Алтая, Саур-Тарбагатая и Тянь-Шаня
+        } else {
+          c.setHex(0xF6F8FB); // Снежные вершины Хан-Тенгри и Белухи
+        }
+        tCols.push(c.r, c.g, c.b);
+      }
+
+      kzTopGeo.setAttribute('color', new THREE.Float32BufferAttribute(tCols, 3));
+      kzTopGeo.computeVertexNormals();
+
+      const kzTopMat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.8,
+        metalness: 0.04
+      });
+      kzMainGroup.add(new THREE.Mesh(kzTopGeo, kzTopMat));
+
+      // Четкий контур государственной границы Республики Казахстан поверх рельефа
+      const kzBorderPts = kzAccurateBorderLonLat.map(coord => {
+        const [bx, bz] = lonLatToKzXZ(coord[0], coord[1]);
+        const by = 0.38 + getEurasiaKazakhstanRelief(coord[0], coord[1]);
+        return new THREE.Vector3(bx, by, bz);
+      });
+      const kzBorderCurve = new THREE.CatmullRomCurve3(kzBorderPts, true);
+      const kzBorderTube = new THREE.TubeGeometry(kzBorderCurve, 260, 0.048, 8, true);
+      const kzBorderMat = new THREE.MeshBasicMaterial({ color: 0x11161C });
+      kzMainGroup.add(new THREE.Mesh(kzBorderTube, kzBorderMat));
+
+      // 3. ЯРКО И КОНТРАСТНО ВЫДЕЛЕННЫЕ ВОДНЫЕ ОБЪЕКТЫ КАЗАХСТАНА
+      buildKzWaterObjects();
+
+      // 4. Детальная 3D-модель Аральского моря
+      aralDetailGroup = new THREE.Group();
+      aralDetailGroup.visible = false;
+      kzScene.add(aralDetailGroup);
+      buildDetailedAral3DGroup();
+
+      setupKzInteraction(canvas);
+      setupAralSliderEvents();
+    }
+
+    function buildKzWaterObjects() {
+      kzClickables = [];
+      kzVisualWaterMeshes = [];
+      kzPulseRings = [];
+
+      kzWaterObjects.forEach((obj, idx) => {
+        const [cx, cz] = lonLatToKzXZ(obj.lon, obj.lat);
+        obj.x = cx;
+        obj.z = cz;
+
+        // Насыщенный глубокий кобальтово-лазурный цвет воды с ярким голубым свечением, чтобы водоемы сразу выделялись на фоне степей и гор
+        const waterMat = new THREE.MeshStandardMaterial({
+          color: 0x03397A,
+          emissive: 0x0EA5E9,
+          emissiveIntensity: 0.52,
+          roughness: 0.1,
+          metalness: 0.32,
+          side: THREE.DoubleSide
+        });
+
+        const shoreMat = new THREE.MeshBasicMaterial({
+          color: 0x38BDF8,
+          side: THREE.DoubleSide
+        });
+
+        let visualMesh;
+        if (obj.type === 'river' && obj.points) {
+          const riverGroup = new THREE.Group();
+
+          const curvePts = obj.points.map(pt => {
+            const [px, pz] = lonLatToKzXZ(pt[0], pt[1]);
+            const py = 0.42 + getEurasiaKazakhstanRelief(pt[0], pt[1]);
+            return new THREE.Vector3(px, py, pz);
+          });
+          const curve = new THREE.CatmullRomCurve3(curvePts);
+
+          // Яркая бирюзово-голубая береговая кайма вокруг реки, чтобы ее было отлично видно издалека
+          const bankTube = new THREE.TubeGeometry(curve, 52, 0.21, 10, false);
+          bankTube.scale(1, 0.16, 1);
+          riverGroup.add(new THREE.Mesh(bankTube, shoreMat));
+
+          // Главное широкое русло реки поверх каймы
+          const rGeo = new THREE.TubeGeometry(curve, 52, 0.15, 10, false);
+          rGeo.scale(1, 0.28, 1);
+          visualMesh = new THREE.Mesh(rGeo, waterMat);
+          riverGroup.add(visualMesh);
+
+          kzMainGroup.add(riverGroup);
+        } else {
+          let shape = new THREE.Shape();
+
+          if (obj.type === 'balkhash_crescent') {
+            // Знаменитая серповидная дуга озера Балхаш
+            const pts = [
+              [-1.25, 0.32], [-0.8, 0.44], [-0.22, 0.28], [0.12, 0.08],
+              [0.52, 0.24], [1.08, 0.20], [1.32, 0.0], [1.08, -0.18],
+              [0.38, -0.15], [-0.18, -0.24], [-0.75, -0.35], [-1.15, -0.15]
+            ];
+            shape.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+            shape.closePath();
+          } else if (obj.type === 'aral_complex') {
+            // Выразительный контур Аральского моря (Северный и Южный бассейны)
+            const pts = [
+              [-0.55, -0.78], [0.42, -0.84], [0.70, -0.42], [0.24, -0.22],
+              [0.78, 0.15], [0.66, 0.78], [-0.12, 0.86], [-0.78, 0.66],
+              [-0.86, -0.12], [-0.42, -0.34]
+            ];
+            shape.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+            shape.closePath();
+          } else if (obj.type === 'caspian_basin') {
+            // Северо-восточная акватория Каспийского моря с полуостровами Бузачи и Мангышлак
+            const pts = [
+              [-1.15, -1.45], [0.85, -1.35], [1.10, -0.68], [0.28, -0.32],
+              [0.62, 0.24], [-0.18, 0.60], [-0.24, 1.40], [-1.15, 1.50]
+            ];
+            shape.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+            shape.closePath();
+          } else {
+            const steps = 32;
+            for (let i = 0; i <= steps; i++) {
+              const a = (i / steps) * Math.PI * 2;
+              const n = 1 + 0.12 * Math.sin(a * 3 + idx);
+              const sx = Math.cos(a) * obj.rx * n;
+              const sy = Math.sin(a) * obj.rz * n;
+              if (i === 0) shape.moveTo(sx, sy);
+              else shape.lineTo(sx, sy);
+            }
+          }
+
+          const py = 0.43 + getEurasiaKazakhstanRelief(obj.lon, obj.lat);
+
+          // Светящаяся береговая кромка вокруг водоема (чуть шире основной глади)
+          const shoreGeo = new THREE.ShapeGeometry(shape, 24);
+          shoreGeo.rotateX(-Math.PI / 2);
+          shoreGeo.scale(1.12, 1, 1.12);
+          const shoreMesh = new THREE.Mesh(shoreGeo, shoreMat);
+          shoreMesh.position.set(cx, py - 0.012, cz);
+          kzMainGroup.add(shoreMesh);
+
+          // Объёмная сапфировая водная гладь озера / моря
+          const waterGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.055, bevelEnabled: false });
+          waterGeo.rotateX(-Math.PI / 2);
+          visualMesh = new THREE.Mesh(waterGeo, waterMat);
+          visualMesh.position.set(cx, py, cz);
+          kzMainGroup.add(visualMesh);
+        }
+
+        // Пульсирующий маркер-маячок над каждым из 9 водных объектов Казахстана
+        const ringGeo = new THREE.RingGeometry(0.18, 0.28, 28);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0x38BDF8,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.9
+        });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        const ry = 0.49 + getEurasiaKazakhstanRelief(obj.lon, obj.lat);
+        ringMesh.position.set(cx, ry, cz);
+        kzMainGroup.add(ringMesh);
+        kzPulseRings.push(ringMesh);
+
+        visualMesh.userData = { index: idx, baseColor: 0x03397A };
+        kzVisualWaterMeshes.push(visualMesh);
+
+        const hitGeo = new THREE.CylinderGeometry(1.05, 1.05, 0.9, 18);
+        const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+        const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+        hitMesh.position.set(cx, 0.55, cz);
+        hitMesh.userData = { index: idx, visualMesh };
+        kzMainGroup.add(hitMesh);
+        kzClickables.push(hitMesh);
+      });
+    }
+
+    // 3D-батиметрия котловины Аральского моря
+    function getAralBathymetry(x, z) {
+      const dNorthMain = Math.hypot((x - 0.3) / 2.3, (z + 2.75) / 1.25);
+      const dSaryshyganak = Math.hypot((x - 1.9) / 0.95, (z + 3.6) / 0.75);
+      const dWestTrench = Math.hypot((x + 2.25) / 1.15, (z - 1.05) / 2.65);
+      const dEastBowl = Math.hypot((x - 1.25) / 2.45, (z - 1.15) / 2.45);
+      const dVozrozhdeniya = Math.hypot((x + 0.55) / 0.65, (z - 0.9) / 1.35);
+
+      let bedY = 1.05;
+      bedY -= 1.85 * Math.exp(-dNorthMain * dNorthMain * 1.45);
+      bedY -= 1.25 * Math.exp(-dSaryshyganak * dSaryshyganak * 1.6);
+      bedY -= 2.35 * Math.exp(-dWestTrench * dWestTrench * 1.55);
+      bedY -= 1.50 * Math.exp(-dEastBowl * dEastBowl * 1.28);
+      bedY += 0.68 * Math.exp(-dVozrozhdeniya * dVozrozhdeniya * 1.8);
+
+      if (z > -1.65 && z < -1.05 && x > -1.6 && x < 1.8) {
+        bedY += 0.42 * Math.exp(-Math.pow((z + 1.35) * 4.5, 2));
+      }
+
+      bedY += 0.045 * Math.sin(x * 2.8) * Math.cos(z * 2.8) + 0.025 * Math.cos(x * 6.5 + z * 5.2);
+      return bedY;
+    }
+
+    function buildDetailedAral3DGroup() {
+      const bedGeo = new THREE.PlaneGeometry(13.5, 11.5, 170, 145);
+      bedGeo.rotateX(-Math.PI / 2);
+      const pos = bedGeo.attributes.position;
+      const colors = [];
+
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vz = pos.getZ(i);
+        const y = getAralBathymetry(vx, vz);
+        pos.setY(i, y);
+
+        const c = new THREE.Color();
+        if (y > 0.62) c.setHex(0xB89B6C);
+        else if (y > 0.15) c.setHex(0xD8CCB8);
+        else if (y > -0.45) c.setHex(0xEAE6DF);
+        else c.setHex(0x8899A6);
+        colors.push(c.r, c.g, c.b);
+      }
+
+      bedGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      bedGeo.computeVertexNormals();
+
+      const bedMat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.85,
+        metalness: 0.05
+      });
+      aralDetailGroup.add(new THREE.Mesh(bedGeo, bedMat));
+
+      // Кокаральская плотина
+      const damGeo = new THREE.BoxGeometry(2.4, 0.32, 0.14);
+      const damMat = new THREE.MeshStandardMaterial({ color: 0x64748B, roughness: 0.6 });
+      const damMesh = new THREE.Mesh(damGeo, damMat);
+      damMesh.position.set(0.25, 0.08, -1.35);
+      aralDetailGroup.add(damMesh);
+
+      aralWaterGeo = new THREE.PlaneGeometry(12.5, 10.5, 135, 115);
+      aralWaterGeo.rotateX(-Math.PI / 2);
+
+      const waterMat = new THREE.MeshStandardMaterial({
+        color: 0x0F4C81,
+        roughness: 0.14,
+        metalness: 0.28,
+        transparent: true,
+        opacity: 0.88
+      });
+
+      aralWaterMesh = new THREE.Mesh(aralWaterGeo, waterMat);
+      aralDetailGroup.add(aralWaterMesh);
+    }
+
+    function updateAral3DWaterSurface(step) {
+      if (!aralWaterGeo) return;
+      const pos = aralWaterGeo.attributes.position;
+
+      const levelNorth = -0.75 + step.north * 1.12;
+      const levelWest  = -1.20 + step.west  * 1.57;
+      const levelEast  = -0.52 + step.east  * 0.89;
+
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vz = pos.getZ(i);
+
+        let targetWaterY;
+        if (vz < -1.35) {
+          targetWaterY = levelNorth;
+        } else {
+          const tEast = Math.max(0, Math.min(1, (vx + 0.8) / 1.4));
+          targetWaterY = levelWest * (1 - tEast) + levelEast * tEast;
+        }
+
+        const bedH = getAralBathymetry(vx, vz);
+        if (targetWaterY < bedH - 0.01) {
+          pos.setY(i, bedH - 0.08);
+        } else {
+          pos.setY(i, targetWaterY);
+        }
+      }
+
+      pos.needsUpdate = true;
+      aralWaterGeo.computeVertexNormals();
+    }
+
+    function setupAralSliderEvents() {
+      const slider = document.getElementById('aral-slider');
+      const bar = document.getElementById('aral-timeline-bar');
+      if (!slider || !bar) return;
+
+      ['mousedown', 'pointerdown', 'touchstart', 'mousemove', 'pointermove', 'touchmove', 'click'].forEach(evtName => {
+        bar.addEventListener(evtName, e => e.stopPropagation());
+      });
+
+      slider.addEventListener('input', function(e) {
+        e.stopPropagation();
+        setAralStep(Number(this.value));
+      });
+
+      slider.addEventListener('change', function(e) {
+        e.stopPropagation();
+        setAralStep(Number(this.value));
+      });
+    }
+
+    function setAralStep(idx) {
+      currentAralStepIdx = Math.max(0, Math.min(aralTimelineSteps.length - 1, Number(idx)));
+      const step = aralTimelineSteps[currentAralStepIdx];
+      if (!step) return;
+
+      const slider = document.getElementById('aral-slider');
+      if (slider && Number(slider.value) !== currentAralStepIdx) {
+        slider.value = currentAralStepIdx;
+      }
+
+      document.getElementById('aral-year-display').textContent = step.year;
+      document.getElementById('kz-aral-year-tag').textContent = step.year;
+
+      if (selectedKzIdx === 0) populateKzInfo(0);
+      updateAral3DWaterSurface(step);
+    }
+
+    function setupKzInteraction(canvas) {
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let moved = false;
+
+      canvas.addEventListener('mousedown', e => {
+        isDragging = true;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+      });
+
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        if (isDragging) {
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+
+          if (isAral3DMode) {
+            aralTargetRotY = Math.max(-0.75, Math.min(0.75, aralTargetRotY + dx * 0.005));
+          } else {
+            kzTargetRotY = Math.max(-0.45, Math.min(0.45, kzTargetRotY + dx * 0.004));
+          }
+          startX = e.clientX;
+          startY = e.clientY;
+          return;
+        }
+
+        if (isAral3DMode) {
+          document.getElementById('kz-hover-label').classList.add('hidden');
+          return;
+        }
+
+        raycaster.setFromCamera(mouse, kzCamera);
+        const hits = raycaster.intersectObjects(kzClickables);
+        const label = document.getElementById('kz-hover-label');
+
+        kzVisualWaterMeshes.forEach(m => {
+          if (selectedKzIdx !== m.userData.index) {
+            m.material.color.setHex(m.userData.baseColor);
+          }
+        });
+
+        if (hits.length > 0) {
+          const hitObj = hits[0].object;
+          const idx = hitObj.userData.index;
+          hitObj.userData.visualMesh.material.color.setHex(0x041630);
+          canvas.style.cursor = 'pointer';
+          label.textContent = kzWaterObjects[idx][currentLang].name;
+          label.style.left = (e.clientX + 14) + 'px';
+          label.style.top = (e.clientY + 14) + 'px';
+          label.classList.remove('hidden');
+        } else {
+          canvas.style.cursor = 'grab';
+          label.classList.add('hidden');
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        document.getElementById('kz-hover-label').classList.add('hidden');
+      });
+
+      canvas.addEventListener('click', e => {
+        if (moved || isAral3DMode) return;
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, kzCamera);
+        const hits = raycaster.intersectObjects(kzClickables);
+        if (hits.length > 0) {
+          selectKzWaterObject(hits[0].object.userData.index);
+        }
+      });
+    }
+
+    function selectKzWaterObject(idx) {
+      selectedKzIdx = idx;
+      const obj = kzWaterObjects[idx];
+
+      const infoBox = document.getElementById('kz-info-box');
+      const infoInner = document.getElementById('kz-info-inner');
+      const canvasWrap = document.getElementById('kz-canvas-wrap');
+      const resetBtn = document.getElementById('kz-reset-btn');
+      const timelineBar = document.getElementById('aral-timeline-bar');
+      const yearTag = document.getElementById('kz-aral-year-tag');
+
+      infoBox.classList.remove('hidden');
+      infoBox.classList.add('flex');
+      canvasWrap.className = "w-full lg:w-7/12 flex flex-col relative";
+      resetBtn.classList.remove('hidden');
+
+      const photoEl = document.getElementById('kz-photo');
+      bindPhotoFromConfig(photoEl, obj.photoKey);
+
+      infoInner.classList.add('fade-out-state');
+      setTimeout(() => {
+        populateKzInfo(idx);
+        infoInner.classList.remove('fade-out-state');
+      }, 150);
+
+      if (obj.isAral) {
+        isAral3DMode = true;
+        kzMainGroup.visible = false;
+        aralDetailGroup.visible = true;
+        aralTargetRotY = -0.18;
+
+        timelineBar.classList.remove('hidden');
+        yearTag.classList.remove('hidden');
+
+        kzTargetLookAt.set(0, -0.15, 0);
+        kzTargetCamPos.set(0, 8.6, 8.2);
+        setAralStep(currentAralStepIdx);
+      } else {
+        isAral3DMode = false;
+        kzMainGroup.visible = true;
+        aralDetailGroup.visible = false;
+        kzTargetRotY = 0;
+
+        timelineBar.classList.add('hidden');
+        yearTag.classList.add('hidden');
+
+        kzTargetLookAt.set(obj.x, 0.35, obj.z);
+        kzTargetCamPos.set(obj.x * 0.85, 5.2, obj.z + 4.3);
+
+        kzVisualWaterMeshes.forEach(m => {
+          const isSel = m.userData.index === idx;
+          m.material.color.setHex(isSel ? 0x021B40 : m.userData.baseColor);
+          m.material.emissiveIntensity = isSel ? 0.85 : 0.52;
+        });
+      }
+
+      resizeKzCanvas();
+      requestAnimationFrame(resizeKzCanvas);
+      setTimeout(resizeKzCanvas, 100);
+    }
+
+    function populateKzInfo(idx) {
+      const obj = kzWaterObjects[idx];
+      const data = obj[currentLang];
+      const dict = i18n[currentLang];
+
+      document.getElementById('kz-name').textContent = data.name;
+
+      if (obj.isAral) {
+        const step = aralTimelineSteps[currentAralStepIdx];
+        document.getElementById('kz-aral-year-tag').textContent = step.year;
+        document.getElementById('kz-problem').innerHTML = `<strong class="text-[#11161C]">${dict.label_prob_prefix}</strong>${step[currentLang]}<br><br>${data.prob}`;
+      } else {
+        document.getElementById('kz-problem').innerHTML = `<strong class="text-[#11161C]">${dict.label_prob_prefix}</strong>${data.prob}`;
+      }
+
+      document.getElementById('kz-solution').innerHTML = `<strong class="text-[#11161C]">${dict.label_sol_prefix}</strong>${data.sol}`;
+    }
+
+    function resetKzView() {
+      selectedKzIdx = null;
+      isAral3DMode = false;
+
+      kzMainGroup.visible = true;
+      aralDetailGroup.visible = false;
+
+      document.getElementById('kz-info-box').classList.add('hidden');
+      document.getElementById('kz-info-box').classList.remove('flex');
+      document.getElementById('aral-timeline-bar').classList.add('hidden');
+      document.getElementById('kz-aral-year-tag').classList.add('hidden');
+      document.getElementById('kz-reset-btn').classList.add('hidden');
+      document.getElementById('kz-canvas-wrap').className = "w-full lg:w-full flex flex-col relative";
+
+      kzTargetRotY = 0;
+      kzTargetLookAt.copy(KZ_DEFAULT_LOOK);
+      kzTargetCamPos.copy(KZ_DEFAULT_CAM);
+      kzVisualWaterMeshes.forEach(m => {
+        m.material.color.setHex(m.userData.baseColor);
+        m.material.emissiveIntensity = 0.52;
+      });
+
+      resizeKzCanvas();
+      requestAnimationFrame(resizeKzCanvas);
+      setTimeout(resizeKzCanvas, 100);
+    }
+
+    function populateKzInfo(idx) {
+      const obj = kzWaterObjects[idx];
+      const data = obj[currentLang];
+      const dict = i18n[currentLang];
+
+      document.getElementById('kz-name').textContent = data.name;
+
+      if (obj.isAral) {
+        const step = aralTimelineSteps[currentAralStepIdx];
+        document.getElementById('kz-aral-year-tag').textContent = step.year;
+        document.getElementById('kz-problem').innerHTML = `<strong class="text-[#11161C]">${dict.label_prob_prefix}</strong>${step[currentLang]}<br><br>${data.prob}`;
+      } else {
+        document.getElementById('kz-problem').innerHTML = `<strong class="text-[#11161C]">${dict.label_prob_prefix}</strong>${data.prob}`;
+      }
+
+      document.getElementById('kz-solution').innerHTML = `<strong class="text-[#11161C]">${dict.label_sol_prefix}</strong>${data.sol}`;
+    }
+
+    function resetKzView() {
+      selectedKzIdx = null;
+      isAral3DMode = false;
+
+      kzMainGroup.visible = true;
+      aralDetailGroup.visible = false;
+
+      document.getElementById('kz-info-box').classList.add('hidden');
+      document.getElementById('kz-info-box').classList.remove('flex');
+      document.getElementById('aral-timeline-bar').classList.add('hidden');
+      document.getElementById('kz-aral-year-tag').classList.add('hidden');
+      document.getElementById('kz-reset-btn').classList.add('hidden');
+      document.getElementById('kz-canvas-wrap').className = "w-full lg:w-full flex flex-col relative";
+
+      kzTargetRotY = 0;
+      kzTargetLookAt.copy(KZ_DEFAULT_LOOK);
+      kzTargetCamPos.copy(KZ_DEFAULT_CAM);
+      kzVisualWaterMeshes.forEach(m => m.material.color.setHex(m.userData.baseColor));
+
+      resizeKzCanvas();
+      requestAnimationFrame(resizeKzCanvas);
+      setTimeout(resizeKzCanvas, 100);
+    }
+
+    function resizeKzCanvas() {
+      const box = document.getElementById('kz-viewport-box');
+      if (!box || !kzRenderer || !kzCamera) return;
+      const rect = box.getBoundingClientRect();
+      const w = Math.max(300, Math.floor(rect.width));
+      const h = Math.max(400, Math.floor(rect.height));
+      kzCamera.aspect = w / h;
+      kzCamera.updateProjectionMatrix();
+      kzRenderer.setSize(w, h, false);
+    }
+
+    /* =========================================================================
+       8. АНИМАЦИОННЫЙ ЦИКЛ
+       ========================================================================= */
+    function animateAll() {
+      requestAnimationFrame(animateAll);
+
+      const pulseT = performance.now() * 0.0032;
+      const pulseScale = 1 + 0.22 * Math.sin(pulseT);
+      const pulseOpacity = 0.55 + 0.35 * Math.cos(pulseT);
+
+      worldPulseRings.forEach(ring => {
+        ring.scale.set(pulseScale, 1, pulseScale);
+        ring.material.opacity = pulseOpacity;
+      });
+
+      kzPulseRings.forEach(ring => {
+        ring.scale.set(pulseScale, 1, pulseScale);
+        ring.material.opacity = pulseOpacity;
+      });
+
+      if (worldRenderer && worldScene && worldCamera) {
+        worldCamera.position.lerp(worldTargetCamPos, 0.08);
+        worldCurrentLookAt.lerp(worldTargetLookAt, 0.08);
+        worldCamera.lookAt(worldCurrentLookAt);
+        if (worldGroup) {
+          worldGroup.rotation.y += (worldTargetRotY - worldGroup.rotation.y) * 0.1;
+        }
+        worldRenderer.render(worldScene, worldCamera);
+      }
+
+      if (kzRenderer && kzScene && kzCamera) {
+        kzCamera.position.lerp(kzTargetCamPos, 0.08);
+        kzCurrentLookAt.lerp(kzTargetLookAt, 0.08);
+        kzCamera.lookAt(kzCurrentLookAt);
+        if (kzMainGroup) {
+          kzMainGroup.rotation.y += (kzTargetRotY - kzMainGroup.rotation.y) * 0.1;
+        }
+        if (aralDetailGroup) {
+          aralDetailGroup.rotation.y += (aralTargetRotY - aralDetailGroup.rotation.y) * 0.1;
+        }
+        kzRenderer.render(kzScene, kzCamera);
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      resizeWorldCanvas();
+      resizeKzCanvas();
+    });
+
+    window.onload = function () {
+      initStaticPhotos();
+      applyLanguageContent('ru');
+      initScrollRevealAnimations();
+      initWorld3D();
+      initKz3D();
+      animateAll();
+
+      const vEl = document.getElementById('footer-video');
+      if (vEl) {
+        vEl.addEventListener('play', updateVideoButtonsState);
+        vEl.addEventListener('pause', updateVideoButtonsState);
+      }
+    };
+  </script>
+</body>
+</html>
